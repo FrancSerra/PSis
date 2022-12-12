@@ -83,6 +83,7 @@ int main()
          // If the message is of the connect type
         if (in_msg.msg_type == 0){
             
+            
 
             //Checks if there are already 10 players
             if (n_players < 10){
