@@ -1,4 +1,3 @@
-
 #include <ncurses.h>
 #include "remote-char.h"
 #include <unistd.h>
