@@ -13,7 +13,6 @@
 #define SERVER_ADDRESS "/tmp/server_socket"
 
 
-
 WINDOW * message_win;
 
 
