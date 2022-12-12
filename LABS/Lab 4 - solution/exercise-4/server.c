@@ -96,7 +96,7 @@ int main()
     /* creates a window and draws a border */
     WINDOW * my_win = newwin(WINDOW_SIZE, WINDOW_SIZE, 0, 0);
     box(my_win, 0 , 0);	
-	wrefresh(my_win);
+	wrefresh(my_win); 
 
     int ch;
     int pos_x;

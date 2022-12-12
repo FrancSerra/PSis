@@ -54,7 +54,7 @@ int main()
 	// wrefresh(my_win);
 
 
-    int ch; 
+    char ch; 
     int pos_x;
     int pos_y;
     int n_bytes;
@@ -70,7 +70,8 @@ int main()
         //receives incoming message
         n_bytes = recvfrom(server_sock, &in_msg, sizeof(remote_message_t), 0, (struct sockaddr *) &client_address, &client_address_size);
    
-        
+        printf("received %d\n", in_msg.msg_type);
+
         //Ignore the message if it is not of the type pre-defined
         if (n_bytes != sizeof(remote_message_t)){
             continue;
@@ -83,21 +84,20 @@ int main()
          // If the message is of the connect type
         if (in_msg.msg_type == 0){
             
-            
+            printf("bla");
 
             //Checks if there are already 10 players
             if (n_players < 10){
                 //Assign the atributes to the new player
-                ch = 200;
+                ch = 'f';
                 pos_x = WINDOW_SIZE/2;
                 pos_y = WINDOW_SIZE/2;
-
-                //Add the new player do the list
+                printf("O cliente é :\n");
+                // Add the new player do the list
                 players_info[n_players].ch = ch;
                 players_info[n_players].pos_x = pos_x;
                 players_info[n_players].pos_y = pos_y;
                 n_players++;
-
                 printf("O cliente é : %d\n", ch); 
                 // sendto(server_sock, &out_msg, sizeof(out_msg), 0, (const struct sockaddr *) &client_address, sizeof(client_address));
                 
