@@ -59,6 +59,8 @@ void moove_player (player_position_t * player, int direction){
 player_position_t p1;
 
 int main(){
+    //////////////////WINDOW//////////////////
+
 	initscr();		    	/* Start curses mode 		*/
 	cbreak();				/* Line buffering disabled	*/
     keypad(stdscr, TRUE);   /* We get F1, F2 etc..		*/
