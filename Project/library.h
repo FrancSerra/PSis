@@ -12,7 +12,6 @@ typedef struct remote_message_t
 
 }remote_message_t;
 
-
 typedef struct players_info_t
 {
     char ch;

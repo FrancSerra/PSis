@@ -13,8 +13,6 @@
 
 #define SERVER_ADDRESS "/tmp/server_socket"
 
-
-
 int main()
 {
     int server_sock;
@@ -84,7 +82,7 @@ int main()
          // If the message is of the connect type
         if (in_msg.msg_type == 0){
             
-            printf("bla");
+
 
             //Checks if there are already 10 players
             if (n_players < 10){
