@@ -12,10 +12,6 @@
 
 int main()
 {
-
-
-
-
     //TODO_4
     // create and open the FIFO for writing
     int sock_fd;
@@ -39,8 +35,6 @@ int main()
     }
 
 
-
-
     struct sockaddr_un server_addr;
     server_addr.sun_family = AF_UNIX;
     strcpy(server_addr.sun_path, SOCKET_NAME);
@@ -62,7 +56,7 @@ int main()
     remote_char_t m, m_receive;
     m.msg_type = 0;
     m.ch = ch;
-   sendto(sock_fd, &m, sizeof(remote_char_t), 0, 
+    sendto(sock_fd, &m, sizeof(remote_char_t), 0, 
             (const struct sockaddr *)&server_addr, sizeof(server_addr));
     
 
