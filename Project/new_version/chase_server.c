@@ -1,5 +1,4 @@
 #include "chase.h"
-#include "lists.h"
 
 int main()
 {
@@ -28,10 +27,12 @@ int main()
     message_t in_msg, out_msg;
     int n_bytes;
 
-    client_list* head = create_head_client_list();
+    head = create_head_client_list();
     num_players = 0;
 
     int new_client_err, delete_client_err;
+    char letter;
+    init_pos_t init_pos;
 
     while(1)
     {
@@ -42,25 +43,23 @@ int main()
                     if (num_players < MAX_PLAYERS){
                         num_players ++;
 
-                        out_msg.x = WINDOW_SIZE/2;
-                        out_msg.y = WINDOW_SIZE/2;
-                        out_msg.c = ascii2char();
-                        out_msg.health = 10;
+                        letter = ascii2char();
+                        init_pos = init_position(head);
 
-                        new_client_err = insert_new_client(head, in_msg.pid, out_msg.c, out_msg.x, out_msg.y, out_msg.health);
-                        if (new_client_err == 1) {
-                            out_msg.type = ball_info;
+                        new_client_err = insert_new_client(head, in_msg.pid, letter, init_pos.x, init_pos.y, INITIAL_HEALTH);
+                        if (new_client_err != -1) { // caso seja adicionado à lista com sucesso
+                            out_msg = msg2send(ball_info, in_msg.pid, letter, init_pos.x, init_pos.y, -1, INITIAL_HEALTH);
                         }
-                        else {
-                            out_msg.type = error;
+                        else { // caso haja erro de alocacao de memoria
+                            out_msg = msg2send(error, in_msg.pid, UNUSED_CHAR, -1, -1, -1, -1);
                         }
                         
                     }
-                    else {
-                        out_msg.type = error;
+                    else { // caso já haja 10 players
+                        out_msg = msg2send(error, in_msg.pid, UNUSED_CHAR, -1, -1, -1, -1);
                     }
                     sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr*) &client_address, sizeof(client_address));
-   
+                    break;
                 //case ball_mov:
                 case disconn:
                     delete_client_err = delete_client(head, in_msg.pid);
@@ -69,7 +68,9 @@ int main()
                     }
                     else {
                         num_players --;
+                        printf("entrou aqui\n");
                     }
+                    break;
                     
                 default: 
                     break;

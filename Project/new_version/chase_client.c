@@ -1,14 +1,3 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <fcntl.h>  
-#include <unistd.h>
-#include <ncurses.h>
-
 #include "chase.h"
 
 int main(int argc, char *argv[])
@@ -56,12 +45,22 @@ int main(int argc, char *argv[])
             printf("Error connecting this client.\n");
             exit(-1);
         }
+        else if(in_msg.type == 1) {
+            // while .....
+        }
+        else {
+            out_msg = msg2send(disconn, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
+            sendto(client_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr*) &server_address, sizeof(server_address));
+            printf("Error: You have been disconnected.\n");
+            exit(-1);
+        }
 
     }
-    else {
-        out_msg.type = disconn;
-        out_msg.pid = client_pid;
+    else { // error n_bytes != sizeof(message_t): message not received
+        out_msg = msg2send(disconn, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
         sendto(client_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr*) &server_address, sizeof(server_address));
+        printf("Error: You have been disconnected.\n");
+        exit(-1);
     }
     printf("type: %d\n x: %d\n y:%d\n c: %c\n health:%d\n", in_msg.type, in_msg.x, in_msg.y, in_msg.c, in_msg.health);
 }
