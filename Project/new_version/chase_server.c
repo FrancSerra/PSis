@@ -8,7 +8,6 @@ int main()
     int client_address_size = sizeof(client_address);
 
     server_sock = socket(AF_UNIX, SOCK_DGRAM, 0);
-
     if (server_sock == -1){
 		perror("socket: ");
 		exit(-1);
@@ -29,7 +28,7 @@ int main()
     int n_bytes;
 
     client_list* head = create_head_client_list();
-    num_players = 20;
+    num_players = 0;
 
     while(1)
     {
@@ -45,7 +44,7 @@ int main()
                         out_msg.c = ascii2char();
                         out_msg.health = 10;
 
-                        int new_client_err = insert_new_client(head, in_msg.pid, out_msg.c, out_msg.x, out_msg.y, out_msg.health);
+                        int new_client_err = insert_new_client(head, out_msg.pid, out_msg.c, out_msg.x, out_msg.y, out_msg.health);
                         if (new_client_err == 1) {
                             out_msg.type = ball_info;
                         }
