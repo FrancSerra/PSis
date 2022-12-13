@@ -137,18 +137,6 @@ int check_message(message_t msg){
     return 0;
 }
 
-char ascii2char() {
-    int aux_search = 1; // aux_search: = 1 if found (position held) = 0 if not found
-    char c = 64; // '@' in ASCII, 65 = 'A'
-    
-    while (aux_search == 1) {
-        c++;
-        aux_search = search_letter(head, c);
-    }
-
-    return c;
-}
-
 message_t msg2send(msg_type type, int pid, char c, int x, int y, int direction, int health) {
     message_t out_msg;
 
@@ -163,16 +151,72 @@ message_t msg2send(msg_type type, int pid, char c, int x, int y, int direction, 
     return out_msg;
 }
 
-init_pos_t init_position (client_list* head) {
+position_t initialize_player() {
     srand(time(0));
-    init_pos_t init_pos;
-    int aux_search = 1; // aux_search: = 1 if found (position held) = 0 if not found
+    position_t init_pos;
+    char c = 64; // '@' in ASCII, 65 = 'A'
+    int search_pos = 1; // 1 if found (position held) 0 if not found
+    int search_lett = 1; // 1 if found (letter used) = 0 if not found
+    
+    while (search_pos == 1 || search_lett == 1){
+        if (search_pos == 1) {
+            init_pos.x = (rand()% (WINDOW_SIZE-2 - 1 + 1)) + 1;
+            init_pos.y = (rand()% (WINDOW_SIZE-2 - 1 + 1)) + 1;
 
-    while (aux_search == 1) {
-        init_pos.x = (rand()% (WINDOW_SIZE-2 - 1 + 1)) + 1;
-        init_pos.y = (rand()% (WINDOW_SIZE-2 - 1 + 1)) + 1;
-
-        aux_search = search_position(head, init_pos.x, init_pos.y);
+            search_pos = search_position(head, init_pos.x, init_pos.y);
+        }
+         if (search_lett == 1) {
+            c++;
+            search_lett = search_letter(head, c); 
+        }
     }
+    init_pos.c = c;
     return init_pos;
+}
+
+// Functions provided by the Prof
+
+void new_player (position_t * player, char c){
+    player->x = WINDOW_SIZE/2;
+    player->y = WINDOW_SIZE/2;
+    player->c = c;
+}
+
+void draw_player(WINDOW *win, position_t * player, int delete){
+    int ch;
+    if(delete){
+        ch = player->c;
+    }else{
+        ch = ' ';
+    }
+    int p_x = player->x;
+    int p_y = player->y;
+    wmove(win, p_y, p_x);
+    waddch(win,ch);
+    wrefresh(win);
+}
+
+void moove_player (position_t * player, int direction){
+    if (direction == KEY_UP){
+        if (player->y  != 1){
+            player->y --;
+        }
+    }
+
+    if (direction == KEY_DOWN){
+        if (player->y  != WINDOW_SIZE-2){
+            player->y ++;
+        }
+    }
+
+    if (direction == KEY_LEFT){
+        if (player->x  != 1){
+            player->x --;
+        }
+    }
+    
+    if (direction == KEY_RIGHT)
+        if (player->x  != WINDOW_SIZE-2){
+            player->x ++;
+    }
 }

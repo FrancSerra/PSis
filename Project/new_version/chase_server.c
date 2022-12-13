@@ -31,8 +31,7 @@ int main()
     num_players = 0;
 
     int new_client_err, delete_client_err;
-    char letter;
-    init_pos_t init_pos;
+    position_t init_pos;
 
     while(1)
     {
@@ -43,12 +42,13 @@ int main()
                     if (num_players < MAX_PLAYERS){
                         num_players ++;
 
-                        letter = ascii2char();
-                        init_pos = init_position(head);
+                        // printf("PID = %d\n", in_msg.pid);
 
-                        new_client_err = insert_new_client(head, in_msg.pid, letter, init_pos.x, init_pos.y, INITIAL_HEALTH);
+                        init_pos = initialize_player();
+
+                        new_client_err = insert_new_client(head, in_msg.pid, init_pos.c, init_pos.x, init_pos.y, INITIAL_HEALTH);
                         if (new_client_err != -1) { // caso seja adicionado à lista com sucesso
-                            out_msg = msg2send(ball_info, in_msg.pid, letter, init_pos.x, init_pos.y, -1, INITIAL_HEALTH);
+                            out_msg = msg2send(ball_info, in_msg.pid, init_pos.c, init_pos.x, init_pos.y, -1, INITIAL_HEALTH);
                         }
                         else { // caso haja erro de alocacao de memoria
                             out_msg = msg2send(error, in_msg.pid, UNUSED_CHAR, -1, -1, -1, -1);

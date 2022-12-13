@@ -30,9 +30,10 @@ typedef struct message_t{
     int health;
 } message_t;
 
-typedef struct init_pos_t {
+typedef struct position_t {
     int x, y;
-} init_pos_t;
+    char c;
+} position_t;
 
 typedef struct client_list{
     int pid;
@@ -45,14 +46,17 @@ typedef struct client_list{
 // Global variables
 int num_players;
 client_list* head;
+WINDOW * message_win; // Prof
+position_t p1; // Profs
 
 client_list* create_head_client_list();
 int insert_new_client(client_list* head, int pid, char c, int x, int y, int health);
 int delete_client(client_list* head, int pid);
 void print_client_list(client_list *node);
 int search_position(client_list* head, int x, int y);
-
-char ascii2char();
+position_t initialize_player();
 int check_message(message_t msg);
 message_t msg2send(msg_type type, int pid, char c, int x, int y, int direction, int health);
-init_pos_t init_position (client_list* head);
+void new_player (position_t * player, char c);
+void draw_player(WINDOW *win, position_t * player, int delete);
+void moove_player (position_t * player, int direction);
