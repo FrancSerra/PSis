@@ -107,7 +107,7 @@ int main()
            (const struct sockaddr *) &server_addr, sizeof(server_addr));
     
         }
-        refresh();			/* Print it on to the real screen */
+        //refresh();			/* Print it on to the real screen */
     }while(key != 27);
     
     
