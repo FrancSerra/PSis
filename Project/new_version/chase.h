@@ -47,7 +47,7 @@ typedef struct client_list{
 int num_players;
 client_list* head;
 WINDOW * message_win; // Prof
-position_t p1; // Profs
+position_t p1; // Prof
 
 client_list* create_head_client_list();
 int insert_new_client(client_list* head, int pid, char c, int x, int y, int health);

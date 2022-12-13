@@ -41,11 +41,11 @@ int main(int argc, char *argv[])
 
     n_bytes = recvfrom(client_sock, &in_msg, sizeof(message_t), 0, (struct sockaddr *) &server_address, &server_address_size);
     if(n_bytes == sizeof(message_t)) {
-        if(in_msg.type == 6) {
+        if(in_msg.type == error) {
             printf("Error connecting this client.\n");
             exit(-1);
         }
-        else if(in_msg.type == 1) {
+        else if(in_msg.type == ball_info) {
             // while .....
         }
         else {

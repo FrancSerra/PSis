@@ -24,7 +24,7 @@ int insert_new_client(client_list* head, int pid, char c, int x, int y, int heal
     if(new_block == NULL){ //verificar o sucesso da alocação
         printf("Erro de alocação de memória.\n");
         return -1;
-        }
+    }
 
     client_list* last = head->next; //last aponta para o começo da lista
 
@@ -214,7 +214,7 @@ void moove_player (position_t * player, int direction){
             player->x --;
         }
     }
-    
+
     if (direction == KEY_RIGHT)
         if (player->x  != WINDOW_SIZE-2){
             player->x ++;

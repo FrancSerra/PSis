@@ -42,7 +42,7 @@ int main()
                     if (num_players < MAX_PLAYERS){
                         num_players ++;
 
-                        // printf("PID = %d\n", in_msg.pid);
+                        printf("PID = %d\n", in_msg.pid);
 
                         init_pos = initialize_player();
 
