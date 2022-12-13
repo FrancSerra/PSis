@@ -8,23 +8,17 @@
 #include <fcntl.h>  
 #include <unistd.h>
 #include <ncurses.h>
+#include <time.h>
 
 #define SERVER_ADDRESS "/tmp/server_socket"
 #define WINDOW_SIZE 20
 #define MAX_PLAYERS 10
 #define UNUSED_CHAR 35 // # in ASCII
-
-// Global variables
-int num_players;
+#define INITIAL_HEALTH 10
 
 typedef enum msg_type{
     conn, ball_info, ball_mov, field_stat, health0, disconn, error
 } msg_type;
-
-/* typedef struct message_t{
-    msg_type type;
-    ball_position_t ball_pos;
-} message_t; */
 
 typedef struct message_t{
     msg_type type;
@@ -36,6 +30,33 @@ typedef struct message_t{
     int health;
 } message_t;
 
-char ascii2char();
+typedef struct position_t {
+    int x, y;
+    char c;
+} position_t;
+
+typedef struct client_list{
+    int pid;
+    char c;
+    int x, y;
+    int health;
+    struct client_list *next;
+} client_list;
+
+// Global variables
+int num_players;
+client_list* head;
+WINDOW * message_win; // Prof
+position_t p1; // Prof
+
+client_list* create_head_client_list();
+int insert_new_client(client_list* head, int pid, char c, int x, int y, int health);
+int delete_client(client_list* head, int pid);
+void print_client_list(client_list *node);
+int search_position(client_list* head, int x, int y);
+position_t initialize_player();
 int check_message(message_t msg);
 message_t msg2send(msg_type type, int pid, char c, int x, int y, int direction, int health);
+void new_player (position_t * player, char c);
+void draw_player(WINDOW *win, position_t * player, int delete);
+void moove_player (position_t * player, int direction);
