@@ -103,6 +103,17 @@ int search_position(client_list* head, int x, int y){
     return 0; //returns 0 if not found
 }
 
+int search_letter(client_list* head, char c){
+
+    for (client_list* temp = head->next; temp != NULL; temp = temp->next)
+    {
+        if (temp->c == c){
+            return 1; // returns 1 if found (letter already assigned)
+        }
+    }
+
+    return 0; //returns 0 if not found
+}
 
 int check_message(message_t msg){
     switch(msg.type){
@@ -127,8 +138,13 @@ int check_message(message_t msg){
 }
 
 char ascii2char() {
-    int a = 65;
-    char c = a+num_players-1;
+    int aux_search = 1; // aux_search: = 1 if found (position held) = 0 if not found
+    char c = 64; // '@' in ASCII, 65 = 'A'
+    
+    while (aux_search == 1) {
+        c++;
+        aux_search = search_letter(head, c);
+    }
 
     return c;
 }

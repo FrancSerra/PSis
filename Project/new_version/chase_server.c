@@ -37,7 +37,7 @@ int main()
     while(1)
     {
         n_bytes = recvfrom(server_sock, &in_msg, sizeof(message_t), 0, (struct sockaddr *) &client_address, &client_address_size);
-		if(n_bytes == sizeof(message_t) && check_message(in_msg)== 0) {
+		if(n_bytes == sizeof(message_t) && check_message(in_msg) == 0) {
             switch(in_msg.type) {
                 case conn:
                     if (num_players < MAX_PLAYERS){
@@ -68,7 +68,6 @@ int main()
                     }
                     else {
                         num_players --;
-                        printf("entrou aqui\n");
                     }
                     break;
                     
