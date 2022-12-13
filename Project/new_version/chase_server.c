@@ -8,6 +8,7 @@ int main()
     int client_address_size = sizeof(client_address);
 
     server_sock = socket(AF_UNIX, SOCK_DGRAM, 0);
+
     if (server_sock == -1){
 		perror("socket: ");
 		exit(-1);
@@ -30,6 +31,8 @@ int main()
     client_list* head = create_head_client_list();
     num_players = 0;
 
+    int new_client_err, delete_client_err;
+
     while(1)
     {
         n_bytes = recvfrom(server_sock, &in_msg, sizeof(message_t), 0, (struct sockaddr *) &client_address, &client_address_size);
@@ -44,7 +47,7 @@ int main()
                         out_msg.c = ascii2char();
                         out_msg.health = 10;
 
-                        int new_client_err = insert_new_client(head, out_msg.pid, out_msg.c, out_msg.x, out_msg.y, out_msg.health);
+                        new_client_err = insert_new_client(head, in_msg.pid, out_msg.c, out_msg.x, out_msg.y, out_msg.health);
                         if (new_client_err == 1) {
                             out_msg.type = ball_info;
                         }
@@ -60,8 +63,8 @@ int main()
    
                 //case ball_mov:
                 case disconn:
-                    int delete_err = delete_client(head, in_msg.pid);
-                    if (delete_err == -1) {
+                    delete_client_err = delete_client(head, in_msg.pid);
+                    if (delete_client_err == -1) {
                         printf("This client was not yet connected.\n");
                     }
                     else {

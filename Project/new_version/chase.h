@@ -12,6 +12,7 @@
 #define SERVER_ADDRESS "/tmp/server_socket"
 #define WINDOW_SIZE 20
 #define MAX_PLAYERS 10
+#define UNUSED_CHAR 35 // # in ASCII
 
 // Global variables
 int num_players;
@@ -37,3 +38,4 @@ typedef struct message_t{
 
 char ascii2char();
 int check_message(message_t msg);
+message_t msg2send(msg_type type, int pid, char c, int x, int y, int direction, int health);

@@ -41,12 +41,27 @@ int main(int argc, char *argv[])
     server_address.sun_family = AF_UNIX;
     strcpy(server_address.sun_path, argv[1]);
 
-    message_t in_msg, out_msg;
+    int client_pid;
+    client_pid =  getpid();
 
-    out_msg.pid = getpid();
-    out_msg.type = conn;
+    message_t in_msg, out_msg;
+    int n_bytes;
+
+    out_msg = msg2send(conn, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
     sendto(client_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr*) &server_address, sizeof(server_address));
-    recvfrom(client_sock, &in_msg, sizeof(message_t), 0, (struct sockaddr *) &server_address, &server_address_size);
-    
+
+    n_bytes = recvfrom(client_sock, &in_msg, sizeof(message_t), 0, (struct sockaddr *) &server_address, &server_address_size);
+    if(n_bytes == sizeof(message_t)) {
+        if(in_msg.type == 6) {
+            printf("Error connecting this client.\n");
+            exit(-1);
+        }
+
+    }
+    else {
+        out_msg.type = disconn;
+        out_msg.pid = client_pid;
+        sendto(client_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr*) &server_address, sizeof(server_address));
+    }
     printf("type: %d\n x: %d\n y:%d\n c: %c\n health:%d\n", in_msg.type, in_msg.x, in_msg.y, in_msg.c, in_msg.health);
 }
