@@ -107,8 +107,8 @@ int main(int argc, char *argv[]){
     printf("sent %d\n", out_msg.msg_type);
 
     int n_bytes;
-    n_bytes = recvfrom(client_sock, &in_msg, sizeof(remote_message_t), 0, (struct sockaddr *) &server_address, sizeof(server_address));
-    printf("Your assigned letter is: %s.\n", &in_msg.ch);
+    n_bytes = recvfrom(client_sock, &in_msg, sizeof(remote_message_t), 0, (struct sockaddr *) &server_address, (unsigned int) sizeof(server_address));
+    printf("Your assigned letter is: %c.\n", in_msg.ch);
     
     // while(1){
         

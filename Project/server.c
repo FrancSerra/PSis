@@ -17,7 +17,7 @@ int main()
 {
     int server_sock;
     struct sockaddr_un server_address, client_address;
-    int client_address_size;
+    unsigned int client_address_size;
     client_address_size = sizeof(client_address);
 
     ////////////////////SOCKET CREATION////////////////////
@@ -88,17 +88,17 @@ int main()
                 ch = 'f';
                 pos_x = WINDOW_SIZE/2;
                 pos_y = WINDOW_SIZE/2;
-                // Add the new player do the list
+                // Add the new player do the list 
                 players_info[n_players].ch = ch;
                 players_info[n_players].pos_x = pos_x;
                 players_info[n_players].pos_y = pos_y;
+                out_msg.msg_type = 0;  //// Se meter ch  apenas funiona !!!!!!!!
+                out_msg.ch = players_info[n_players].ch;
+                
                 n_players++;
 
-                out_msg.msg_type = 0;  //// Se meter ch  apenasfuniona !!!!!!!!
-                out_msg.ch = players_info[n_players].ch; //// Se meter ch  apenasfuniona 
-          
                 sendto(server_sock, &out_msg, sizeof(out_msg), 0, (const struct sockaddr *) &client_address, sizeof(client_address));
-                
+                printf("Out message is : %c\n", out_msg.ch);
             }else{
                 //send a message saying its full!!!
                 out_msg.msg_type = 2;
