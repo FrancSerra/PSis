@@ -53,14 +53,22 @@ int insert_new_client(client_list* head, int pid, char c, int x, int y, int heal
     return 1;
 }
 
-int delete_client(client_list* head, int pid){
+int delete_client(client_list* head, int pid, WINDOW* win){
 
     // Store head node
     client_list *temp = head->next, *prev;
+
+    position_t delete_pos;
  
     // If head node itself holds the key to be deleted
     if (temp != NULL && temp->pid == pid) {
         head->next = temp->next; // Changed head
+        delete_pos.c = temp->c;
+        delete_pos.x = temp->x;
+        delete_pos.y = temp->y;
+        draw_player(win, &delete_pos, false);
+        draw_health(&delete_pos, 2, false);
+
         free(temp); // free old head
         return 1;   //returns 1 if key was present and deleted
     }
@@ -78,7 +86,13 @@ int delete_client(client_list* head, int pid){
  
     // Unlink the node from linked list
     prev->next = temp->next;
- 
+    
+    delete_pos.c = temp->c;
+    delete_pos.x = temp->x;
+    delete_pos.y = temp->y;
+    draw_player(win, &delete_pos, false);
+    draw_health(&delete_pos, 2, false);
+
     free(temp); // Free memory
     return 1;   //returns 1 if key was present and deleted
 }
@@ -131,15 +145,20 @@ client_list* search_client(client_list* head, int pid){
     return temp; // returns NULL if not found
 }
 
-client_list* update_client(client_list* head, int pid, int direction){
+client_list* update_client(client_list* head, int pid, int direction, WINDOW* win){
     
     client_list* player;
     client_list* other_player;
+    position_t new_play, old_play;
 
     player = search_client(head, pid);
-    int x, y;
+    int x, y; // aux
     x = player->x;
     y = player->y;
+
+    old_play.c = player->c;
+    old_play.x = player->x;
+    old_play.y = player->y;
 
     // If client was not present in linked list
     if (player == NULL)
@@ -175,12 +194,25 @@ client_list* update_client(client_list* head, int pid, int direction){
         // search prize tudo dentro de sucessivos ifs - so muda a pos no ultimo if 
                     player->x=x;
                     player->y=y;
+
+                    draw_player(win, &old_play, false);
+                    new_play.c = player->c;
+                    new_play.x = player->x;
+                    new_play.y = player->y;
+                    draw_player(win, &new_play, true);
+                    
     }
     else {
         player->health ++;
         other_player->health --;
-    }
 
+        new_play.c = player->c;
+        new_play.health = player->health;
+        draw_health(&new_play, 1, false);
+        new_play.c = other_player->c;
+        new_play.health = other_player->health;
+        draw_health(&new_play, 1, false);
+    }
 
     return player;
 }
@@ -225,10 +257,30 @@ position_t initialize_player(client_list* head) {
         }
     }
     init_pos.c = c;
+    init_pos.health = INITIAL_HEALTH;
     return init_pos;
 }
 
 // Graphics
+WINDOW* generate_window() {
+    initscr();		    	/* Start curses mode 		*/
+	cbreak();				/* Line buffering disabled	*/
+    keypad(stdscr, TRUE);   /* We get F1, F2 etc..		*/
+	noecho();			    /* Don't echo() while we do getch */
+
+    /* creates a window and draws a border */ 
+    WINDOW * my_win = newwin(WINDOW_SIZE, WINDOW_SIZE, 0, 0);
+    box(my_win, 0 , 0);	
+	wrefresh(my_win);
+    keypad(my_win, true); 
+
+    /* creates a window and draws a border  */
+    message_win = newwin(12, WINDOW_SIZE, WINDOW_SIZE, 0);
+    box(message_win, 0 , 0);	
+	wrefresh(message_win);
+
+    return(my_win);
+}
 
 void new_player (position_t * player, char c){
     player->x = WINDOW_SIZE/2;
@@ -250,22 +302,43 @@ void draw_player(WINDOW *win, position_t * player, int delete){
     wrefresh(win);
 }
 
-WINDOW* generate_window() {
-    initscr();		    	/* Start curses mode 		*/
-	cbreak();				/* Line buffering disabled	*/
-    keypad(stdscr, TRUE);   /* We get F1, F2 etc..		*/
-	noecho();			    /* Don't echo() while we do getch */
+void draw_health(position_t * player, int to_do, int conn_client) {
+    // to_do : 0 - iniciar msg box health, 1 - editar player health, 2 - eliminar player health
+    int aux = 1;
+    int c = 65;
 
-    /* creates a window and draws a border */ 
-    WINDOW * my_win = newwin(WINDOW_SIZE, WINDOW_SIZE, 0, 0);
-    box(my_win, 0 , 0);	
-	wrefresh(my_win);
-    keypad(my_win, true); 
+    if(conn_client) { // client window: beggining
+        mvwprintw(message_win, 1,2,"%c: %d", player->c, player->health);
+        wrefresh(message_win);
+    }
+    else {
+        if (player != NULL) {
+            while( c != player->c){
+                c++;
+                aux++;
+            }
+        }
+        switch (to_do)
+        {
+        case 0:
+            for(int i=1; i<=MAX_PLAYERS; i++) {
+                mvwprintw(message_win, i,2,"-----");
+            }
+            wrefresh(message_win);
+            break;
+         case 1:
+            mvwprintw(message_win, aux,2,"%c:   ", player->c);
+            mvwprintw(message_win, aux,2,"%c: %d", player->c, player->health);
+            wrefresh(message_win);
+            break;
+         case 2:
+            mvwprintw(message_win, aux,2,"-----");
+            wrefresh(message_win);
+            break;
+        
+        default:
+            break;
+        }
 
-    /* creates a window and draws a border  */
-    message_win = newwin(12, WINDOW_SIZE, WINDOW_SIZE, 0);
-    box(message_win, 0 , 0);	
-	wrefresh(message_win);
-
-    return(my_win);
+    }
 }
