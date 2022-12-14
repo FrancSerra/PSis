@@ -52,6 +52,7 @@ position_t player; // Prof
 
 // Lists
 client_list* create_head_client_list();
+
 int insert_new_client(client_list* head, int pid, char c, int x, int y, int health);
 int delete_client(client_list* head, int pid);
 void print_client_list(client_list *node);
@@ -68,3 +69,5 @@ message_t msg2send(msg_type type, int pid, char c, int x, int y, int direction, 
 WINDOW* generate_window();
 void new_player (position_t * player, char c);
 void draw_player(WINDOW *win, position_t * player, int delete);
+
+void new_position(int* x, int *y, direction_t direction)
