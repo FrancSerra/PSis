@@ -73,27 +73,26 @@ int main(int argc, char *argv[])
     
     WINDOW* my_win = generate_window();
     draw_player(my_win, &player, true);
+    draw_health(&player, 0, true);
+    //mvwprintw(message_win, 1,2,"%c: %d", player.c, player.health);
+    //wrefresh(message_win);	 
 
     int key = -1;
     while(key != 27 && key!= 'q'){
-        key = wgetch(my_win);		 
+        key = wgetch(my_win);	
         if (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN){
             out_msg = msg2send(ball_mov, client_pid, UNUSED_CHAR, -1, -1, key, -1);
             sendto(client_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr*) &server_address, sizeof(server_address));
         }
-        mvwprintw(message_win, 1,2,"%c: %d", player.c, player.health);
-        wrefresh(message_win); 	
+         	
     }  
 
     printf("\033[11B");
-    printf("\033[7D");
+    printf("\033[6D");
+    printf("Game over!\n");
+    printf("\033[1B");
+    printf("\033[10D");
+    out_msg = msg2send(disconn, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
+    sendto(client_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr*) &server_address, sizeof(server_address));
     exit(0);
 }
-
-           // draw_player(my_win, &player, false);
-           // moove_player (&player, key);
-           // draw_player(my_win, &player, true);
-
-
-           //out_msg = msg2send(ball_mov, client_pid, player.c, -1, -1, key, -1);
-           //sendto(client_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr*) &server_address, sizeof(server_address));

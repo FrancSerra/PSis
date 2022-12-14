@@ -25,15 +25,18 @@ int main()
 	}
 
     message_t in_msg, out_msg;
-    int n_bytes, client_pid;
+    int n_bytes;
 
     client_list* head = create_head_client_list();
+    client_list* player;
+
     num_players = 0;
 
     int new_client_err, delete_client_err;
     position_t init_pos;
 
     WINDOW* my_win = generate_window();
+    draw_health(NULL, 0, false);
 
     while(1)
     {
@@ -43,13 +46,11 @@ int main()
                 case conn:
                     if (num_players < MAX_PLAYERS){
                         num_players ++;
-
-                        printf("PID_msg = %d\n", in_msg.pid);
-
                         init_pos = initialize_player(head);
-
                         new_client_err = insert_new_client(head, in_msg.pid, init_pos.c, init_pos.x, init_pos.y, INITIAL_HEALTH);
                         if (new_client_err != -1) { // caso seja adicionado à lista com sucesso
+                            draw_player(my_win, &init_pos, true);
+                            draw_health(&init_pos, 1, false);
                             out_msg = msg2send(ball_info, in_msg.pid, init_pos.c, init_pos.x, init_pos.y, -1, INITIAL_HEALTH);
                         }
                         else { // caso haja erro de alocacao de memoria
@@ -63,16 +64,16 @@ int main()
                     sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr*) &client_address, sizeof(client_address));
                     break;
                 case ball_mov:
-                   /* update_err = update_client(head, in_msg.pid, in_msg.direction);
-                    if (update_err == -1) {
+                    player = update_client(head, in_msg.pid, in_msg.direction, my_win);
+                    if (player == NULL) {
                         out_msg = msg2send(error, in_msg.pid, UNUSED_CHAR, -1, -1, -1, -1);
                     }
-                    else {
-
-                    } */
+                    else { 
+                        // field_status	
+                    } 
                     break; 
-                case disconn:
-                    delete_client_err = delete_client(head, in_msg.pid);
+                case disconn:	
+                    delete_client_err = delete_client(head, in_msg.pid, my_win);
                     if (delete_client_err == -1) {
                         printf("This client was not yet connected.\n");
                     }
@@ -87,6 +88,7 @@ int main()
         }
         else {
             perror("Fails to receive message.\n");
+
         }
     }
     

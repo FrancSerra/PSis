@@ -53,12 +53,12 @@ position_t player; // Prof
 // Lists
 client_list* create_head_client_list();
 int insert_new_client(client_list* head, int pid, char c, int x, int y, int health);
-int delete_client(client_list* head, int pid);
+int delete_client(client_list* head, int pid, WINDOW* win);
 void print_client_list(client_list *node);
 client_list* search_position(client_list* head, int x, int y);
 int search_letter(client_list* head, char c);
 client_list* search_client(client_list* head, int pid);
-client_list* update_client(client_list* head, int pid, int direction);
+client_list* update_client(client_list* head, int pid, int direction, WINDOW* win);
 
 // Comms
 position_t initialize_player(client_list* head);
@@ -68,3 +68,4 @@ message_t msg2send(msg_type type, int pid, char c, int x, int y, int direction, 
 WINDOW* generate_window();
 void new_player (position_t * player, char c);
 void draw_player(WINDOW *win, position_t * player, int delete);
+void draw_health(position_t * player, int to_do, int conn_client);
