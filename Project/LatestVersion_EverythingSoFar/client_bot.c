@@ -61,18 +61,26 @@ int main(int argc, char *argv[]){
     sendto(bot_client_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&server_address, sizeof(server_address));
     printf("Connect message sent\n");
 
-    recvfrom(bot_client_sock, &in_msg, sizeof(message_t), 0, (struct sockaddr *) &server_address, &server_address_size);
+    int n_bytes; 
+
+    n_bytes = recvfrom(bot_client_sock, &in_msg, sizeof(message_t), 0, (struct sockaddr *) &server_address, &server_address_size);
+    if (n_bytes != sizeof(message_t)) {
+        printf("Failed communication.\nYou have been disconnected.\n");
+        exit(-1);
+    }
+
     if (in_msg.type != bot_conn){
-        printf("Failed connecting\nTry again!\n");
+        printf("Failed connecting.\n");
         exit(-1);
     }
     else{
         printf("Added %d out of %d bots.\n", in_msg.health, n_bots);
         n_bots = in_msg.health;
-        printf("Bots running \n");
+        printf("Bots running...\n");
 
         while (1)
         {
+            sleep(3);
 
             // vvvvv Gerar mensagens AQUI vvvvv//
 
@@ -83,8 +91,6 @@ int main(int argc, char *argv[]){
             // sendto(bot_client_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&server_address, sizeof(server_address));
 
             // waits 3 seconds
-
-            sleep(3); // NÃO ESTÁ A FUNCIONAR O LOOP!
             printf("Update position message sent.\n");
             fflush(stdout);
         }

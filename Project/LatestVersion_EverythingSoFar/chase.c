@@ -225,9 +225,9 @@ client_list *update_client(client_list *head, int pid, int direction, WINDOW *wi
             new_play.health = other_player->health;
             draw_health(&new_play, 1, false);
 
-            // IF THE OTHER IS A PRIZE
+            
         }
-        else if (isdigit(other_player->c)){
+        else if (isdigit(other_player->c)){ // IF THE OTHER IS A PRIZE
 
             // sums the prize do my health
             if (player->health < INITIAL_HEALTH){
@@ -236,6 +236,7 @@ client_list *update_client(client_list *head, int pid, int direction, WINDOW *wi
 
                 int prize = other_player->c - ZERO_ASCII;
                 player->health = health + prize;   // player->health += health + atoi(other_player->c);
+                // apagar o prize
 
                 if (player->health > INITIAL_HEALTH)
                     player->health = INITIAL_HEALTH;
@@ -297,7 +298,7 @@ position_t initialize_player(client_list* head) {
     return init_pos;
 }
 
-position_t initialize_bot(client_list *head)
+position_t initialize_bot(client_list *head, int bot)
 {
     srand(time(0));
     position_t init_pos;
@@ -311,11 +312,15 @@ position_t initialize_bot(client_list *head)
         init_pos.y = (rand() % (WINDOW_SIZE - 2 - 1 + 1)) + 1;
     }
 
-    init_pos.c = '*';
+    if(bot) {
+        init_pos.c = '*';
+    }
+    else {
+        init_pos.c = (rand() % (MAX_VALUE_PRIZES - MIN_VALUE_PRIZES + 1)) + MIN_VALUE_PRIZES;
+    }
     init_pos.health = -1; // este valor não é utilizado para nada
     return init_pos;
 }
-
 
 // Graphics
 WINDOW* generate_window() {

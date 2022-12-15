@@ -1,7 +1,6 @@
 #include "chase.h"
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]){
     if (argc != 2){
         printf("Error: Missing recipient IP.\n");
         exit(1);

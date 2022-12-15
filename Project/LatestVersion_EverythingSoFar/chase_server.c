@@ -37,6 +37,8 @@ int main()
     int new_client_err, delete_client_err;
     int aux_if = 0;
     int n_bots = 0;
+    int n_prizes = 0;
+    int flag = 0;
     position_t init_pos;
 
     WINDOW* my_win = generate_window();
@@ -88,7 +90,7 @@ int main()
 
                         for (int i = 0; i < n_bots; i++){
                             // Initializes bot
-                            init_pos = initialize_bot(head);
+                            init_pos = initialize_bot(head, true);
 
                             // Inserts bots into the lists                                                          
                             new_client_err = insert_new_client(head, i + 1, init_pos.c, init_pos.x, init_pos.y, -1); // health doesn't have a meaning for the bot
@@ -111,9 +113,62 @@ int main()
                         }  
                     }
                     else{
-                        // caso já haja 10 players
+                        // caso já haja 10 bots
                         out_msg = msg2send(error, in_msg.pid, UNUSED_CHAR, -1, -1, -1, -1);
                     } 
+                    sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
+                    break;
+
+                case bot_mov:
+                    //
+                    break;
+                
+                case prizes_conn:
+                    flag = in_msg.health; // 0: initialize 5, 1: add 1
+                    if (flag == 0)
+                        n_prizes = 5;
+                    else if(flag == 1)
+                        n_prizes = 1;
+                    else {  
+                        out_msg = msg2send(error, in_msg.pid, UNUSED_CHAR, -1, -1, -1, -1);
+                        sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
+                        break;
+                    }
+
+                    if (num_prizes < MAX_PRIZES) {
+                        int sum = num_prizes + n_prizes;
+                        if(sum > MAX_PRIZES){
+                            n_prizes = MAX_PRIZES - num_prizes;
+                        }
+
+                        for (int i = 0; i < n_prizes; i++){
+                            // Initializes prize(s)
+                            init_pos = initialize_bot(head, false); // fazer funcao
+
+                            // Inserts prize(s) into the lists                                                          
+                            new_client_err = insert_new_client(head, i + 1, init_pos.c, init_pos.x, init_pos.y, -1); // health doesn't have a meaning for the prizes
+                            if (new_client_err != -1) {
+                                draw_player(my_win, &init_pos, true);
+                                num_prizes++;
+                            }
+                            else {
+                                aux_if = 1;
+                                break;
+                            }
+                        }
+
+                        if (aux_if){
+                            out_msg = msg2send(error, in_msg.pid, UNUSED_CHAR, -1, -1, -1, -1); // em vez de erro manda so com os que desenhou?
+                        }
+                        else{
+                            // Tells prizes client that he can start sending messages
+                            out_msg = msg2send(prizes_conn, in_msg.pid, UNUSED_CHAR, -1, -1, -1, n_prizes); 
+                        } 
+                    }
+                    else {  // caso já haja 10 prizes
+                        n_prizes = 0;
+                        out_msg = msg2send(prizes_conn, in_msg.pid, UNUSED_CHAR, -1, -1, -1, n_prizes);
+                    }
                     sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
                     break;
 

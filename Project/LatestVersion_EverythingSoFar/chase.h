@@ -16,12 +16,16 @@
 #define MAX_PLAYERS 10
 #define MAX_BOTS 10
 #define MAX_PRIZES 10
+#define INIT_PRIZES 5
+#define PRIZES_LOOP 1
 #define UNUSED_CHAR 35 // # in ASCII
 #define INITIAL_HEALTH 10
 #define ZERO_ASCII 48
+#define MAX_VALUE_PRIZES 53 // 5 in ASCII
+#define MIN_VALUE_PRIZES 49 // 1 in ASCII
 
 typedef enum msg_type{
-    conn, bot_conn, ball_info, ball_mov, field_stat, health0, disconn, error
+    conn, bot_conn, prizes_conn, ball_info, ball_mov, bot_mov, field_stat, health0, disconn, error
 } msg_type;
 
 typedef struct message_t{
@@ -66,7 +70,7 @@ client_list* update_client(client_list* head, int pid, int direction, WINDOW* wi
 
 // Comms
 position_t initialize_player(client_list* head);
-position_t initialize_bot(client_list *head);
+position_t initialize_bot(client_list *head, int bot);
 message_t msg2send(msg_type type, int pid, char c, int x, int y, int direction, int health);
 
 // Graphics
