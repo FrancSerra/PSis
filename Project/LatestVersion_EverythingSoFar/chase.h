@@ -14,6 +14,8 @@
 #define SERVER_ADDRESS "/tmp/server_socket"
 #define WINDOW_SIZE 20
 #define MAX_PLAYERS 10
+#define MAX_BOTS 10
+#define MAX_PRIZES 10
 #define UNUSED_CHAR 35 // # in ASCII
 #define INITIAL_HEALTH 10
 #define ZERO_ASCII 48
@@ -47,7 +49,7 @@ typedef struct client_list{
 } client_list;
 
 // Global variables
-int num_players;
+int num_players, num_bots, num_prizes;
 WINDOW * message_win; // Prof
 position_t player; // Prof
 

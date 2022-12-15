@@ -31,8 +31,12 @@ int main()
     client_list* player;
 
     num_players = 0;
+    num_bots = 0;
+    num_prizes = 0;
 
     int new_client_err, delete_client_err;
+    int aux_if = 0;
+    int n_bots = 0;
     position_t init_pos;
 
     WINDOW* my_win = generate_window();
@@ -45,10 +49,10 @@ int main()
             switch(in_msg.type) {
                 case conn:
                     if (num_players < MAX_PLAYERS){
-                        num_players ++;
                         init_pos = initialize_player(head);
                         new_client_err = insert_new_client(head, in_msg.pid, init_pos.c, init_pos.x, init_pos.y, INITIAL_HEALTH);
                         if (new_client_err != -1) { // caso seja adicionado à lista com sucesso
+                            num_players ++;
                             draw_player(my_win, &init_pos, true);
                             draw_health(&init_pos, 1, false);
                             out_msg = msg2send(ball_info, in_msg.pid, init_pos.c, init_pos.x, init_pos.y, -1, INITIAL_HEALTH);
@@ -74,21 +78,44 @@ int main()
                     break;
 
                 case bot_conn:
-                    // Tells bot client that he can start sending messages
-                    out_msg.type = bot_conn; // !!!! USAR MSG2SEND
-                    sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
+                    n_bots = in_msg.health; // HEALTH parameter is the carrier for n_bots info. It's the way it was defined
 
-                    int n_bots = in_msg.health; // HEALTH parameter is the carrier for n_bots info. It's the way it was defined
+                    if (num_bots < MAX_BOTS){
+                        int sum = num_bots + n_bots;
+                        if(sum > MAX_BOTS){
+                            n_bots = MAX_BOTS - num_bots;
+                        }
 
-                    for (int i = 0; i < n_bots; i++){
-                        // Initializes bot
-                        init_pos = initialize_bot(head);
+                        for (int i = 0; i < n_bots; i++){
+                            // Initializes bot
+                            init_pos = initialize_bot(head);
 
-                        // Inserts bots into the lists                                                          
-                        new_client_err = insert_new_client(head, i + 1, init_pos.c, init_pos.x, init_pos.y, -1); // health doesn't have a meaning for the bot
-                        draw_player(my_win, &init_pos, true);
+                            // Inserts bots into the lists                                                          
+                            new_client_err = insert_new_client(head, i + 1, init_pos.c, init_pos.x, init_pos.y, -1); // health doesn't have a meaning for the bot
+                            if (new_client_err != -1) {
+                                draw_player(my_win, &init_pos, true);
+                                num_bots++;
+                            }
+                            else {
+                                aux_if = 1;
+                                break;
+                            }
+                        }
+
+                        if (aux_if){
+                            out_msg = msg2send(error, in_msg.pid, UNUSED_CHAR, -1, -1, -1, -1);
+                        }
+                        else{
+                            // Tells bot client that he can start sending messages
+                            out_msg = msg2send(bot_conn, in_msg.pid, UNUSED_CHAR, -1, -1, -1, n_bots); 
+                        }  
                     }
-                    break;    
+                    else{
+                        // caso já haja 10 players
+                        out_msg = msg2send(error, in_msg.pid, UNUSED_CHAR, -1, -1, -1, -1);
+                    } 
+                    sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
+                    break;
 
                 case disconn:	
                     delete_client_err = delete_client(head, in_msg.pid, my_win);
