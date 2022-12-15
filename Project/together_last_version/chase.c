@@ -152,7 +152,7 @@ client_list* update_client(client_list* head, int pid, int direction, WINDOW* wi
     client_list* other_player;
     position_t new_play, old_play;
 
-    player = search_client(head, pid);
+    player = search_client(head, pid); 
     int x, y; // aux
     x = player->x;
     y = player->y;

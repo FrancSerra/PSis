@@ -1,0 +1,60 @@
+Código para fazer prints de debug
+
+mvwprintw(message_win, 11, 1, "                                 "); 	//apagar o que quer que esteja nesta linha
+mvwprintw(message_win, 11, 1, "%d", init_pos.c);				//escrever
+wrefresh(message_win);									//refresh
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+MUDANÇA DE PLANOS
+
+A representação do mapa tem que ser uma lista unica senão vai ser puta de confusão.
+Agora o client_list é a lista dos clients todos ( client_player, client_bot; e client_prize)
+todos dispõem dos mesmo parametros pelo que está nice.
+
+Os PLAYERS são identificados SE FOR LETRA:   ---->> isalpha(client_list.c)
+Os PRIZES são identificados SE FOR DIGITO:   ---->> isdigit(client_list.c)  
+Os BOTS SÃO O RESTO:				   ---->> isalpha(client_list.c)
+	o id dos bots, uma vez que não podem ser identificados pela char, pois é sempre '*' foi definido como sendo atribuido por ordem. 
+VER O QUE FIZ
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+O QUE FIZ
+
+1 - Print na janela de mensagem dos clientes a tecla que foi pressionada, só para efeitos de display;
+
+
+2 - Os bots já lincam com o server. Depois de receber o bot_conn, O server:
+	a.Inicializa a posição dos bots (TESTADO) -----> 		adicionei a função initialize_bot ao chase.c
+										esta função inicializa apenas um bot de cada vez (está dentro de um ciclo que corre os bots todos)
+	
+	b.Adiciona à lista de clientes (NÃO SEI COMO TESTAR MAS DEDUZO QUE ESTEJA BEM)
+		adiciona por ordem com id's: 1, 2, 3... etc
+		assim quando receber direções sabe associar aos respetivos bots.
+		para pesquisar basta procurar por id 1, 2 ,3 , etc porque os outros nunca terão id iguais a estes.
+		ainda assim, por segurança, podemos pesquisar também por ch = '*';
+
+	c.Responde  a dizer que pode começar a enviar (TESTADO)
+
+Fata meter o server a bloquear mais bot clients (meti no trello todo list)
+
+3 - update_client
+
+	ele reconhece o qual o tipo de objeto que esta no caminho e ajusta a health accordingly.
+		se é player  (um sobe e outro desce de vida) já estava
+		se é bot não faz nada (TESTADO)
+		se é prize ganha o prize (NÃO TESTADO, porque não temos o gerador de prizes ainda), falta fazer o prize desaparecer
+
+4 - chase.server case ball_mov
+	
+fiquei a meio porque já eram 6 da matina, então comentei e meti o que funcionava para poderes compilar e ver o que está.
+basicamente queria fazer com que se a vida depois do update fosse 0, eliminava o jogador mas não funcionou.
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+NEXT STEPS:
+por o client bot a mandar mensagens com as direções. 
+fazer um "case: ball_mov" para os bots, ou usar o mesmo ball_mov mas com condição, para diferenciar clientes de bots;
+fazer os prizes;
+...
+
+
+

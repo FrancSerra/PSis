@@ -27,9 +27,11 @@ int main()
     message_t in_msg, out_msg;
     int n_bytes;
 
+    //////////// DECLARAÇÃO DAS LISTAS////////////
     client_list* head = create_head_client_list();
     client_list* player;
-
+    ///////////////////////////////////////////
+     
     num_players = 0;
 
     int new_client_err, delete_client_err;
