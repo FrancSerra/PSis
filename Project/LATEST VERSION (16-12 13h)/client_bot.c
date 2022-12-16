@@ -63,7 +63,7 @@ int main(int argc, char *argv[]){
 
     n_bytes = recvfrom(bot_client_sock, &in_msg, sizeof(message_t), 0, (struct sockaddr *) &server_address, &server_address_size);
     if (n_bytes != sizeof(message_t)) {
-        printf("Failed communication.\nYou have been disconnected.\n");
+        printf("Failed communication.\nYou have not been connected.\n");
         exit(-1);
     }
 
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]){
             out_msg = msg2send(bot_mov, bot_client_pid, UNUSED_CHAR, -1, -1, dirs, -1);
             sendto(bot_client_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&server_address, sizeof(server_address));
 
-            printf("Update position message sent.\n");
+            // printf("Update position message sent.\n");
             fflush(stdout);
         }
     }

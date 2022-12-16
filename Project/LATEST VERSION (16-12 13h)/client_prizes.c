@@ -60,7 +60,7 @@ int main(int argc, char *argv[]){
             sleep(5); 
             out_msg = msg2send(prizes_conn, prizes_client_pid, UNUSED_CHAR, -1, -1, -1, 1); // health used as flag: 1 means put one new prize
             sendto(prizes_client_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr*) &server_address, sizeof(server_address));
-            printf("Message sent.\n");
+            // printf("Message sent.\n");
             fflush(stdout);
             n_bytes = recvfrom(prizes_client_sock, &in_msg, sizeof(message_t), 0, (struct sockaddr *) &server_address, &server_address_size);
             
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]){
                     printf("Failed connecting.\n");
                 }
                 else{
-                    printf("Added %d out of %d prize.\n", in_msg.health, n_prizes);
+                    // printf("Added %d out of %d prize.\n", in_msg.health, n_prizes);
             } 
             }  
         }
