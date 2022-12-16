@@ -1,0 +1,7 @@
+Server:  ./chase_server
+
+Clients:  ./chase_client /tmp/server_socket
+
+Bots:  ./client_bot /tmp/server_socket (n_bots)
+
+Prizes: ./client_prizes /tmp/server_socket
