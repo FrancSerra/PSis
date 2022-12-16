@@ -42,7 +42,7 @@ int main()
     WINDOW *my_win = generate_window();
     draw_health(NULL, 0, false);
     int client_pid;
-
+    int BOT_FLAG = 0;
     while (1)
     {
         n_bytes = recvfrom(server_sock, &in_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, &client_address_size);
@@ -133,20 +133,34 @@ int main()
                 break;
 
             case bot_conn:
-                // Tells bot client that he can star sending messages
-                out_msg.type = bot_conn;
-                sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
-
-                int n_bots = in_msg.health; // HEALTH parameter is the carrier for n_bots info. It's the way it was defined
-
-                for (int i = 0; i < n_bots; i++)
+                mvwprintw(message_win, 11, 1, "                                 ");
+                mvwprintw(message_win, 11, 1, "%d", BOT_FLAG);
+                wrefresh(message_win);
+                if (BOT_FLAG == 1)
                 {
-                    // Initializes bot
-                    init_pos = initialize_bot(n_bots, head);
+                    // THERES IS ALREADY ONE
+                    out_msg.type = error;
+                    sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
+                }
+                else
+                {
+                    BOT_FLAG = 1;
+                    // Tells bot client that he can star sending messages
+                    out_msg.type = bot_conn;
+                    sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
 
-                    //                                                              health doesn't have a meaning for the bot
-                    new_client_err = insert_new_client(head, i + 1, init_pos.c, init_pos.x, init_pos.y, -1);
-                    draw_player(my_win, &init_pos, true);
+                    int n_bots = in_msg.health; // HEALTH parameter is the carrier for n_bots info. It's the way it was defined
+                    mvwprintw(message_win, 11, 4, "%d", BOT_FLAG);
+                    wrefresh(message_win);
+                    for (int i = 0; i < n_bots; i++)
+                    {
+                        // Initializes bot
+                        init_pos = initialize_bot(n_bots, head);
+
+                        //                                                              health doesn't have a meaning for the bot
+                        new_client_err = insert_new_client(head, i + 1, init_pos.c, init_pos.x, init_pos.y, -1);
+                        draw_player(my_win, &init_pos, true);
+                    }
                 }
                 break;
 

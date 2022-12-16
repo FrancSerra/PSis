@@ -43,7 +43,7 @@ int main(int argc, char *argv[]){
     n_bytes = recvfrom(prizes_client_sock, &in_msg, sizeof(message_t), 0, (struct sockaddr *) &server_address, &server_address_size);
     
     if (n_bytes != sizeof(message_t)) {
-        printf("Failed communication.\nYou have been disconnected.\n");
+        printf("Failed communication.\n");
         exit(-1);
     }
     
