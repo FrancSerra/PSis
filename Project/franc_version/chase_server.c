@@ -41,10 +41,14 @@ int main()
 
     WINDOW *my_win = generate_window();
     draw_health(NULL, 0, false);
+    int client_pid;
 
     while (1)
     {
         n_bytes = recvfrom(server_sock, &in_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, &client_address_size);
+
+        // Obtem o ID
+        client_pid = atoi((client_address.sun_path + strlen("/temp/client") - 1));
 
         if (n_bytes == sizeof(message_t))
         {
@@ -55,21 +59,21 @@ int main()
                 {
                     num_players++;
                     init_pos = initialize_player(head);
-                    new_client_err = insert_new_client(head, in_msg.pid, init_pos.c, init_pos.x, init_pos.y, INITIAL_HEALTH);
+                    new_client_err = insert_new_client(head, client_pid, init_pos.c, init_pos.x, init_pos.y, INITIAL_HEALTH);
                     if (new_client_err != -1)
                     { // caso seja adicionado à lista com sucesso
                         draw_player(my_win, &init_pos, true);
                         draw_health(&init_pos, 1, false);
-                        out_msg = msg2send(ball_info, in_msg.pid, init_pos.c, init_pos.x, init_pos.y, -1, INITIAL_HEALTH);
+                        out_msg = msg2send(ball_info, client_pid, init_pos.c, init_pos.x, init_pos.y, -1, INITIAL_HEALTH);
                     }
                     else
                     { // caso haja erro de alocacao de memoria
-                        out_msg = msg2send(error, in_msg.pid, UNUSED_CHAR, -1, -1, -1, -1);
+                        out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
                     }
                 }
                 else
                 { // caso já haja 10 players
-                    out_msg = msg2send(error, in_msg.pid, UNUSED_CHAR, -1, -1, -1, -1);
+                    out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
                 }
                 sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
                 break;
@@ -77,19 +81,19 @@ int main()
                 /////////////////NÃO FUNCIONA! em baixo está a original/////////////////
                 // case ball_mov:
 
-                //     player = update_client(head, in_msg.pid, in_msg.direction, my_win);
+                //     player = update_client(head, client_pid, in_msg.direction, my_win);
 
                 //     if (player == NULL)
                 //     {
-                //         out_msg = msg2send(error, in_msg.pid, UNUSED_CHAR, -1, -1, -1, -1);
+                //         out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
                 //     }
                 //     else if (player->health == 0)
                 //     {
                 //         // define mensagem de fim de jogo (morreu) health0
-                //         out_msg = msg2send(health0, in_msg.pid, UNUSED_CHAR, -1, -1, -1, -1);
+                //         out_msg = msg2send(health0, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
 
                 //         // apaga o jogador da lista
-                //         delete_client_err = delete_client(head, in_msg.pid, my_win);
+                //         delete_client_err = delete_client(head, client_pid, my_win);
                 //         if (delete_client_err == -1)
                 //         {
                 //             printf("This client was not yet connected.\n");
@@ -99,17 +103,16 @@ int main()
                 //             num_players--;
                 //         }
                 //     }
-                
 
                 // sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
                 // break;
                 /////////////////NÃO FUNCIONA/////////////////
 
             case ball_mov:
-                player = update_client(head, in_msg.pid, in_msg.direction, my_win);
+                player = update_client(head, client_pid, in_msg.direction, my_win);
                 if (player == NULL)
                 {
-                    out_msg = msg2send(error, in_msg.pid, UNUSED_CHAR, -1, -1, -1, -1);
+                    out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
                 }
                 else
                 {
@@ -118,7 +121,7 @@ int main()
                 break;
 
             case disconn:
-                delete_client_err = delete_client(head, in_msg.pid, my_win);
+                delete_client_err = delete_client(head, client_pid, my_win);
                 if (delete_client_err == -1)
                 {
                     printf("This client was not yet connected.\n");
