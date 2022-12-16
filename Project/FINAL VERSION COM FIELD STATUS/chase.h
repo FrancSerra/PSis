@@ -15,18 +15,22 @@
 #include <ctype.h>
 
 #define SERVER_ADDRESS "/tmp/server_socket"
+
 #define WINDOW_SIZE 20
 #define MAX_PLAYERS 10
 #define MAX_BOTS 10
 #define MAX_PRIZES 10
+#define INITIAL_HEALTH 10
 #define INIT_PRIZES 5
 #define PRIZES_LOOP 1
-#define UNUSED_CHAR 35 // # in ASCII
-#define BOT_CHAR 42 // * in ASCII
-#define INITIAL_HEALTH 10
-#define ZERO_ASCII 48
 #define MAX_VALUE_PRIZES 53 // 5 in ASCII
 #define MIN_VALUE_PRIZES 49 // 1 in ASCII
+
+#define UNUSED_CHAR 35 // # in ASCII
+#define BOT_CHAR 42 // * in ASCII
+#define DELIM 36// $ in ASCII
+#define ZERO_ASCII 48
+#define BUFFER_SIZE 1000
 
 typedef enum msg_type{
     conn, bot_conn, prizes_conn, ball_info, ball_mov, bot_mov, field_stat, health0, disconn, error
@@ -50,9 +54,8 @@ typedef struct position_t {
 
 typedef struct message_ballmov_t{
     msg_type type;
-    int pid;
     int num_elem;
-    position_t* arr_field; //array of structures position_t
+    char str[BUFFER_SIZE];
 } message_ballmov_t;
 
 typedef struct client_list{
@@ -82,11 +85,16 @@ int update_client(client_list* head, int pid, int direction, WINDOW* win);
 client_list* update_bot(client_list* head, client_list* temp, int mod, WINDOW* win);
 position_t* update_field(client_list* head);
 
+/////NEWWWWWWWWWW
+char* field2msg(client_list* head);
+char *numToASCII(int num);
+position_t* decode_msg_field(int len, char str[BUFFER_SIZE],WINDOW* win);
+
 // Comms
 position_t initialize_player(client_list* head);
 position_t initialize_bot_prizes(client_list *head, int bot);
 message_t msg2send(msg_type type, int pid, char c, int x, int y, long int direction, int health);
-message_ballmov_t msg2send_ballmov(msg_type type, int pid, position_t* arr_field);
+message_ballmov_t msg2send_ballmov(msg_type type, int num_elem, char str[BUFFER_SIZE]);
 
 // Graphics
 WINDOW* generate_window();

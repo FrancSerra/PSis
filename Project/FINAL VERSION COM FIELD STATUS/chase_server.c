@@ -45,8 +45,9 @@ int main()
     int client_pid;
     long int dirs;
     position_t init_pos;
-    
-    position_t* arr_field;
+    char msg[BUFFER_SIZE];
+    char* msg_aux;
+    int num_elem;
 
     WINDOW* my_win = generate_window();
     draw_health(NULL, 0, false);
@@ -86,12 +87,16 @@ int main()
 
                 case ball_mov:
                     err_update = update_client(head, client_pid, in_msg.direction, my_win);	
+                    num_elem = num_bots+num_players+num_prizes;
                     if (err_update == -1) {
-                        out_msg_ballmov = msg2send_ballmov(error, client_pid, NULL);
+                        sprintf(msg," ");
+                        out_msg_ballmov = msg2send_ballmov(error, num_elem, msg);
                     }
                     else {
-                        arr_field = update_field(head);
-                        out_msg_ballmov = msg2send_ballmov(field_stat, client_pid, arr_field);
+                        msg_aux = field2msg(head);
+                        strcpy(msg,msg_aux);
+                        out_msg_ballmov = msg2send_ballmov(field_stat, num_elem, msg);
+                        free(msg_aux);
                     }
                     sendto(server_sock, &out_msg_ballmov, sizeof(message_ballmov_t), 0, (struct sockaddr*) &client_address, sizeof(client_address));
                     break;
@@ -242,7 +247,7 @@ int main()
 
 
         else {
-            printf("\033[40B");
+            printf("\033[41B");
             printf("\033[6D");
             printf("Fails to receive message.\n");
             printf("\033[1B");
