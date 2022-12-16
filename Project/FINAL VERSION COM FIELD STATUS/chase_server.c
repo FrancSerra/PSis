@@ -1,6 +1,5 @@
 #include "chase.h"
 
-
 int main()
 {
     int server_sock;
@@ -9,10 +8,11 @@ int main()
 
     server_sock = socket(AF_UNIX, SOCK_DGRAM, 0);
 
-    if (server_sock == -1){
-		perror("socket: ");
-		exit(-1);
-	}
+    if (server_sock == -1)
+    {
+        perror("socket: ");
+        exit(-1);
+    }
 
     server_address.sun_family = AF_UNIX;
     strcpy(server_address.sun_path, SERVER_ADDRESS);
@@ -20,16 +20,17 @@ int main()
     unlink(SERVER_ADDRESS);
     int err = bind(server_sock, (struct sockaddr *)&server_address, sizeof(server_address));
 
-    if(err == -1) {
-		perror("bind");
-		exit(-1);
-	}
+    if (err == -1)
+    {
+        perror("bind");
+        exit(-1);
+    }
 
     message_t in_msg, out_msg;
     message_ballmov_t out_msg_ballmov;
     int n_bytes;
 
-    client_list* head = create_head_client_list();
+    client_list *head = create_head_client_list();
 
     num_players = 0;
     num_bots = 0;
@@ -46,215 +47,236 @@ int main()
     long int dirs;
     position_t init_pos;
     char msg[BUFFER_SIZE];
-    char* msg_aux;
+    char *msg_aux;
     int num_elem;
 
-    WINDOW* my_win = generate_window();
+    WINDOW *my_win = generate_window();
     draw_health(NULL, 0, false);
 
-    while(1)
+    while (1)
     {
-        n_bytes = recvfrom(server_sock, &in_msg, sizeof(message_t), 0, (struct sockaddr *) &client_address, &client_address_size);
-		if(n_bytes == sizeof(message_t)) {
+        n_bytes = recvfrom(server_sock, &in_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, (socklen_t *)&client_address_size);
+        if (n_bytes == sizeof(message_t))
+        {
 
             // Obtain client PID
-            client_pid = atoi((client_address.sun_path + strlen("/temp/client")-1));
+            client_pid = atoi((client_address.sun_path + strlen("/temp/client") - 1));
 
-            switch(in_msg.type) {
+            switch (in_msg.type)
+            {
 
-                case conn:
-                    if (num_players < MAX_PLAYERS){
-                        init_pos = initialize_player(head);
-                        new_client_err = insert_new_client(head, client_pid, init_pos.c, init_pos.x, init_pos.y, INITIAL_HEALTH);
-                        if (new_client_err != -1) { // caso seja adicionado à lista com sucesso
-                            num_players ++;
-                            draw_player(my_win, &init_pos, true);
-                            draw_health(&init_pos, 1, false);
-                            out_msg = msg2send(ball_info, client_pid, init_pos.c, init_pos.x, init_pos.y, -1, INITIAL_HEALTH);
-                        }
-                        else { // caso haja erro de alocacao de memoria
-                            out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
-                        }
-                        
+            case conn:
+                if (num_players < MAX_PLAYERS)
+                {
+                    init_pos = initialize_player(head);
+                    new_client_err = insert_new_client(head, client_pid, init_pos.c, init_pos.x, init_pos.y, INITIAL_HEALTH);
+                    if (new_client_err != -1)
+                    { // caso seja adicionado à lista com sucesso
+                        num_players++;
+                        draw_player(my_win, &init_pos, true);
+                        draw_health(&init_pos, 1, false);
+                        out_msg = msg2send(ball_info, client_pid, init_pos.c, init_pos.x, init_pos.y, -1, INITIAL_HEALTH);
                     }
-                    else { // caso já haja 10 players
+                    else
+                    { // caso haja erro de alocacao de memoria
                         out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
                     }
-                    sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr*) &client_address, sizeof(client_address));
-                    break;
+                }
+                else
+                { // caso já haja 10 players
+                    out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
+                }
+                sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
+                break;
 
+            case ball_mov:
+                err_update = update_client(head, client_pid, in_msg.direction, my_win);
+                num_elem = num_bots + num_players + num_prizes;
+                if (err_update == -1)
+                {
+                    sprintf(msg, " ");
+                    out_msg_ballmov = msg2send_ballmov(error, num_elem, msg);
+                }
+                else
+                {
+                    msg_aux = field2msg(head);
+                    strcpy(msg, msg_aux);
+                    out_msg_ballmov = msg2send_ballmov(field_stat, num_elem, msg);
+                    free(msg_aux);
+                }
+                sendto(server_sock, &out_msg_ballmov, sizeof(message_ballmov_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
+                break;
 
+            case bot_conn:
 
-                case ball_mov:
-                    err_update = update_client(head, client_pid, in_msg.direction, my_win);	
-                    num_elem = num_bots+num_players+num_prizes;
-                    if (err_update == -1) {
-                        sprintf(msg," ");
-                        out_msg_ballmov = msg2send_ballmov(error, num_elem, msg);
-                    }
-                    else {
-                        msg_aux = field2msg(head);
-                        strcpy(msg,msg_aux);
-                        out_msg_ballmov = msg2send_ballmov(field_stat, num_elem, msg);
-                        free(msg_aux);
-                    }
-                    sendto(server_sock, &out_msg_ballmov, sizeof(message_ballmov_t), 0, (struct sockaddr*) &client_address, sizeof(client_address));
-                    break;
+                if (flag_bot_con == 0)
+                {
 
+                    n_bots = in_msg.health; // HEALTH parameter is the carrier for n_bots info. It's the way it was defined
 
-
-                case bot_conn:
-
-                    if(flag_bot_con == 0) {
-
-                        n_bots = in_msg.health; // HEALTH parameter is the carrier for n_bots info. It's the way it was defined
-
-                        if (num_bots < MAX_BOTS){
-                            int sum = num_bots + n_bots;
-                            if(sum > MAX_BOTS){
-                                n_bots = MAX_BOTS - num_bots;
-                            }
-
-                            for (int i = 0; i < n_bots; i++){
-                                // Initializes bot
-                                init_pos = initialize_bot_prizes(head, true);
-
-                                // Inserts bots into the lists                                                          
-                                new_client_err = insert_new_client(head, client_pid, init_pos.c, init_pos.x, init_pos.y, -1); // health doesn't have a meaning for the bot
-                                if (new_client_err != -1) {
-                                    draw_player(my_win, &init_pos, true);
-                                    num_bots++;
-                                }
-                                else {
-                                    aux_if = 1;
-                                    break;
-                                }
-                            }
-
-                            if (aux_if){
-                                out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
-                            }
-                            else{
-                                // Tells bot client that he can start sending messages
-                                out_msg = msg2send(bot_conn, client_pid, UNUSED_CHAR, -1, -1, -1, n_bots); 
-                            }  
+                    if (num_bots < MAX_BOTS)
+                    {
+                        int sum = num_bots + n_bots;
+                        if (sum > MAX_BOTS)
+                        {
+                            n_bots = MAX_BOTS - num_bots;
                         }
-                        else{
-                            // caso já haja 10 bots
+
+                        for (int i = 0; i < n_bots; i++)
+                        {
+                            // Initializes bot
+                            init_pos = initialize_bot_prizes(head, true);
+
+                            // Inserts bots into the lists
+                            new_client_err = insert_new_client(head, client_pid, init_pos.c, init_pos.x, init_pos.y, -1); // health doesn't have a meaning for the bot
+                            if (new_client_err != -1)
+                            {
+                                draw_player(my_win, &init_pos, true);
+                                num_bots++;
+                            }
+                            else
+                            {
+                                aux_if = 1;
+                                break;
+                            }
+                        }
+
+                        if (aux_if)
+                        {
                             out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
-                        } 
-                        flag_bot_con = 1;
+                        }
+                        else
+                        {
+                            // Tells bot client that he can start sending messages
+                            out_msg = msg2send(bot_conn, client_pid, UNUSED_CHAR, -1, -1, -1, n_bots);
+                        }
                     }
-                    else {
+                    else
+                    {
+                        // caso já haja 10 bots
                         out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
                     }
+                    flag_bot_con = 1;
+                }
+                else
+                {
+                    out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
+                }
+                sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
+                break;
+
+            case bot_mov:
+                // descodificar directions e chamar update bot
+                dirs = in_msg.direction;
+                client_list *aux;
+                aux = head;
+
+                while (dirs > 0)
+                {                        // do till dirs greater than  0
+                    int mod = dirs % 10; // split last digit from number
+                    aux = update_bot(head, aux, mod, my_win);
+                    dirs = dirs / 10; // divide num by 10. num /= 10 also a valid one
+                }
+                break;
+
+            case prizes_conn:
+
+                flag = in_msg.health; // 0: initialize 5, 1: add 1
+                if (flag == 0)
+                {
+                    n_prizes = 5;
+                }
+                else if (flag == 1)
+                {
+                    n_prizes = 1;
+                    flag_prizes_con = 0;
+                }
+                else
+                {
+                    out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
                     sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
                     break;
+                }
 
+                if (flag_prizes_con == 0)
+                {
 
-
-                case bot_mov:
-                    // descodificar directions e chamar update bot
-                    dirs = in_msg.direction;
-                    client_list* aux;
-                    aux = head;
-
-                    while(dirs > 0) { //do till dirs greater than  0
-                        int mod = dirs % 10;  //split last digit from number
-                        aux = update_bot(head, aux, mod, my_win);
-                        dirs = dirs / 10;    //divide num by 10. num /= 10 also a valid one 
-                    }
-                    break;
-                
-
-
-                case prizes_conn:
-
-                    flag = in_msg.health; // 0: initialize 5, 1: add 1
-                    if (flag == 0) {
-                        n_prizes = 5;
-                    }
-                    else if(flag == 1) {
-                        n_prizes = 1;
-                        flag_prizes_con = 0;
-                    }
-                    else {  
-                        out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
-                        sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
-                        break;
-                    }
-
-                    if (flag_prizes_con == 0) {
-
-                        if (num_prizes < MAX_PRIZES) {
-                            int sum = num_prizes + n_prizes;
-                            if(sum > MAX_PRIZES){
-                                n_prizes = MAX_PRIZES - num_prizes;
-                            }
-
-                            for (int i = 0; i < n_prizes; i++){
-                                // Initializes prize(s)
-                                init_pos = initialize_bot_prizes(head, false); // fazer funcao
-
-                                // Inserts prize(s) into the lists                                                          
-                                new_client_err = insert_new_client(head, client_pid, init_pos.c, init_pos.x, init_pos.y, -1); // health doesn't have a meaning for the prizes
-                                if (new_client_err != -1) {
-                                    draw_player(my_win, &init_pos, true);
-                                    num_prizes++;
-                                }
-                                else {
-                                    aux_if = 1;
-                                    break;
-                                }
-                            }
-
-                            if (aux_if){
-                                out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1); // em vez de erro manda so com os que desenhou?
-                            }
-                            else{
-                                // Tells prizes client that he can start sending messages
-                                out_msg = msg2send(prizes_conn, client_pid, UNUSED_CHAR, -1, -1, -1, n_prizes); 
-                            } 
+                    if (num_prizes < MAX_PRIZES)
+                    {
+                        int sum = num_prizes + n_prizes;
+                        if (sum > MAX_PRIZES)
+                        {
+                            n_prizes = MAX_PRIZES - num_prizes;
                         }
-                        else {  // caso já haja 10 prizes
-                            n_prizes = 0;
+
+                        for (int i = 0; i < n_prizes; i++)
+                        {
+                            // Initializes prize(s)
+                            init_pos = initialize_bot_prizes(head, false); // fazer funcao
+
+                            // Inserts prize(s) into the lists
+                            new_client_err = insert_new_client(head, client_pid, init_pos.c, init_pos.x, init_pos.y, -1); // health doesn't have a meaning for the prizes
+                            if (new_client_err != -1)
+                            {
+                                draw_player(my_win, &init_pos, true);
+                                num_prizes++;
+                            }
+                            else
+                            {
+                                aux_if = 1;
+                                break;
+                            }
+                        }
+
+                        if (aux_if)
+                        {
+                            out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1); // em vez de erro manda so com os que desenhou?
+                        }
+                        else
+                        {
+                            // Tells prizes client that he can start sending messages
                             out_msg = msg2send(prizes_conn, client_pid, UNUSED_CHAR, -1, -1, -1, n_prizes);
                         }
-                        flag_prizes_con = 1;
                     }
-                    else {
-                        out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
+                    else
+                    { // caso já haja 10 prizes
+                        n_prizes = 0;
+                        out_msg = msg2send(prizes_conn, client_pid, UNUSED_CHAR, -1, -1, -1, n_prizes);
                     }
-                    sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
-                    break;
+                    flag_prizes_con = 1;
+                }
+                else
+                {
+                    out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
+                }
+                sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
+                break;
 
+            case disconn:
+                delete_client_err = delete_client(head, client_pid, my_win);
+                if (delete_client_err == -1)
+                {
+                    printf("This client was not yet connected.\n");
+                }
+                else
+                {
+                    num_players--;
+                }
+                break;
 
-
-                case disconn:	
-                    delete_client_err = delete_client(head, client_pid, my_win);
-                    if (delete_client_err == -1) {
-                        printf("This client was not yet connected.\n");
-                    }
-                    else {
-                        num_players --;
-                    }
-                    break;
-                    
-                default: 
-                    break;
+            default:
+                break;
             }
         }
 
-
-        else {
+        else
+        {
             printf("\033[41B");
             printf("\033[6D");
             printf("Fails to receive message.\n");
             printf("\033[1B");
             printf("\033[10D");
-            //perror("Fails to receive message.\n");
-
+            // perror("Fails to receive message.\n");
         }
     }
-    
 }
