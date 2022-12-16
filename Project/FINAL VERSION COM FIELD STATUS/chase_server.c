@@ -28,20 +28,21 @@ int main()
     }
     /////////////////////////////////////////////
     
-    message_t in_msg, out_msg;
-    message_ballmov_t out_msg_ballmov;
-    int n_bytes;
-
-
     // Creates the linked list where all board info is stored; players, bots, prizes
     client_list *head = create_head_client_list();
 
+    // VARIABLES declaration and initialization
+
+    // GLOBALS
     num_players = 0;
     num_bots = 0;
     num_prizes = 0;
-
-    // varaibles declaration and initialization
+    
+    //LOCALS
+    message_t in_msg, out_msg;
+    message_ballmov_t out_msg_ballmov;
     position_t init_pos;
+    int n_bytes;
     int new_client_err, delete_client_err, err_update;
     int aux_if = 0;
     int n_bots = 0;
@@ -50,10 +51,13 @@ int main()
     int flag_bot_con = 0;
     int flag_prizes_con = 0;
     int client_pid;
+    int num_elem;
+
     long int dirs;
+
     char msg[BUFFER_SIZE];
     char *msg_aux;
-    int num_elem;
+    
 
     WINDOW *my_win = generate_window();
     draw_health(NULL, 0, false);
