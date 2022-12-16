@@ -45,6 +45,7 @@ int main()
     int client_pid;
     long int dirs;
     position_t init_pos;
+    
     position_t* arr_field;
 
     WINDOW* my_win = generate_window();
@@ -54,9 +55,12 @@ int main()
     {
         n_bytes = recvfrom(server_sock, &in_msg, sizeof(message_t), 0, (struct sockaddr *) &client_address, &client_address_size);
 		if(n_bytes == sizeof(message_t)) {
+
             // Obtain client PID
             client_pid = atoi((client_address.sun_path + strlen("/temp/client")-1));
+
             switch(in_msg.type) {
+
                 case conn:
                     if (num_players < MAX_PLAYERS){
                         init_pos = initialize_player(head);
