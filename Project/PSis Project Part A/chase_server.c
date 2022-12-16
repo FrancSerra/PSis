@@ -98,10 +98,12 @@ int main()
                         //sends a message to the player containing the assigned, position and character 
                         out_msg = msg2send(ball_info, client_pid, init_pos.c, init_pos.x, init_pos.y, -1, INITIAL_HEALTH);
 
-                    }else{                          // caso haja erro de alocacao de memoria
+                    }
+                    else{                          // caso haja erro de alocacao de memoria
                         out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
                     }
-                }else{ // caso já haja 10 players
+                }
+                else{ // caso já haja 10 players
                     //sends an error message to the player
                     out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
                 }
@@ -120,7 +122,8 @@ int main()
                     sprintf(msg, " ");
                     out_msg_ballmov = msg2send_ballmov(error, num_elem, msg);
 
-                }else{ // If the update is successful
+                }
+                else{ // If the update is successful
 
                     //encodes the field status in an unique string
                     msg_aux = field2msg(head);
@@ -166,7 +169,8 @@ int main()
                                 draw_player(my_win, &init_pos, true);
                                 num_bots++;
 
-                            }else{
+                            }
+                            else{
                                 aux_if = 1;
                                 break;
                             }
@@ -176,17 +180,20 @@ int main()
                             // sends an error message
                             out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
 
-                        }else{
+                        }
+                        else{
                             // Tells BOT client that he can start sending messages
                             out_msg = msg2send(bot_conn, client_pid, UNUSED_CHAR, -1, -1, -1, n_bots);
                         }
 
-                    }else{
+                    }
+                    else{
                         // If the number of BOTs surpases 10, sends an error message
                         out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
                     }
                     
-                }else{  // If there is already a BOT client connected
+                }
+                else{  // If there is already a BOT client connected
                     out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
                 }
 
@@ -223,11 +230,13 @@ int main()
                 if (flag == 0){
                     n_prizes = 5;
 
-                }else if (flag == 1){
+                }
+                else if (flag == 1){
                     n_prizes = 1;
                     flag_prizes_con = 0;
 
-                }else{  // if none of the above cases : error message
+                }
+                else{  // if none of the above cases : error message
                     out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
                     sendto(server_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
                     break;
@@ -265,7 +274,8 @@ int main()
                                 // increments the number of prizes
                                 num_prizes++;
 
-                            }else{
+                            }
+                            else{
                                 aux_if = 1;
                                 break;
                             }
@@ -275,15 +285,16 @@ int main()
                             out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
                         }
                         else{
-                            
                             out_msg = msg2send(prizes_conn, client_pid, UNUSED_CHAR, -1, -1, -1, n_prizes);
                         }
-                    }else{  //In case there are already 10 prizes
+                    }
+                    else{  //In case there are already 10 prizes
                         n_prizes = 0;
                         out_msg = msg2send(prizes_conn, client_pid, UNUSED_CHAR, -1, -1, -1, n_prizes);
                     }
                     
-                }else{
+                }
+                else{
                     out_msg = msg2send(error, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
                 }
 
@@ -299,7 +310,8 @@ int main()
                 if (delete_client_err == -1){
                     printf("Error disconnecting client.\n");
 
-                }else{
+                }
+                else{
                     //decreases number of players
                     num_players--;
                 }
@@ -310,7 +322,8 @@ int main()
             }
 
 
-        }else{ // if none of the types of messages was received: ERROR
+        }
+        else{ // if none of the types of messages was received: ERROR
 
             printf("\033[41B");
             printf("\033[6D");

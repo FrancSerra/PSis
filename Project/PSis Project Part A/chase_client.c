@@ -88,7 +88,8 @@ int main(int argc, char *argv[]){
             exit(-1);
         }
 
-    }else{ // error n_bytes != sizeof(message_t): message not received
+    }
+    else{ // error n_bytes != sizeof(message_t): message not received
         out_msg = msg2send(disconn, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
         sendto(client_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&server_address, sizeof(server_address));
         printf("Error: You have been disconnected.\n");
@@ -136,9 +137,11 @@ int main(int argc, char *argv[]){
 
                     //string decode process
                     for (int j = 0; j < len; j++){
+                        // Deletes the previous positions
                         draw_player(my_win, &field[j], false);
 
                         if (field[j].health != -1){
+                            // Deletes the previous health
                             draw_health(&field[j], 2, false);
                         }
                     }

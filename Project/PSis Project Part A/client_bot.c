@@ -9,6 +9,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    // Number of bots
     int n_bots = atoi(argv[2]);
     int is_zero = strcmp(argv[2], "0");
 
@@ -36,6 +37,7 @@ int main(int argc, char *argv[])
     struct sockaddr_un server_address, bot_client_address;
     int server_address_size = sizeof(server_address);
 
+    // Initialize socket
     bot_client_sock = socket(AF_UNIX, SOCK_DGRAM, 0);
     if (bot_client_sock == -1)
     {
@@ -43,7 +45,7 @@ int main(int argc, char *argv[])
         exit(-1);
     }
 
-    // Geração do ID do bot_client
+    // Get bot client PID 
     int bot_client_pid;
     bot_client_pid = getpid();
 
@@ -51,6 +53,7 @@ int main(int argc, char *argv[])
     sprintf(bot_client_address.sun_path, "/tmp/client%d", bot_client_pid);
 
     unlink(bot_client_address.sun_path);
+    // Check if bind error
     int err = bind(bot_client_sock, (const struct sockaddr *)&bot_client_address, sizeof(bot_client_address));
     if (err == -1)
     {
@@ -62,27 +65,31 @@ int main(int argc, char *argv[])
     strcpy(server_address.sun_path, argv[1]);
 
     message_t out_msg, in_msg;
-    // n_bots is stored in health parameter
+
+    // Number of bots is stored in health parameter
     out_msg = msg2send(bot_conn, bot_client_pid, UNUSED_CHAR, -1, -1, -1, n_bots);
+
+    // Send connection message to the server
     sendto(bot_client_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&server_address, sizeof(server_address));
     printf("Connect message sent\n");
 
     int n_bytes;
 
+    // Receive message from the server
     n_bytes = recvfrom(bot_client_sock, &in_msg, sizeof(message_t), 0, (struct sockaddr *)&server_address, (socklen_t *)&server_address_size);
-    if (n_bytes != sizeof(message_t))
-    {
+    
+    // Fail in receiving message
+    if (n_bytes != sizeof(message_t)){
         printf("Failed communication.\nYou have not been connected.\n");
         exit(-1);
     }
 
-    if (in_msg.type != bot_conn)
-    {
+    if (in_msg.type != bot_conn){
         printf("Failed connecting.\n");
         exit(-1);
     }
-    else
-    {
+    else{
+        // Successfully connected
         printf("Added %d out of %d bots.\n", in_msg.health, n_bots);
         n_bots = in_msg.health;
         printf("Bots running...\n");
@@ -94,12 +101,13 @@ int main(int argc, char *argv[])
 
         while (1)
         {
-            sleep(3);
+            // Enters the loop
+            sleep(3); // Waits 5 seconds
 
             int i;
             for (i = 0; i < n_bots; i++)
             {
-
+                // Generate random directions for bots to move
                 rand_number = (rand() % 4) + 1;
                 sprintf(s1, "%d", rand_number);
 
@@ -112,14 +120,12 @@ int main(int argc, char *argv[])
                     strcat(s2, s1);
                 }
             }
-
+            // Encodes the directions into a long int variable
             long int dirs = atol(s2); // tipo ld
 
+            // Send message with update directions to the server
             out_msg = msg2send(bot_mov, bot_client_pid, UNUSED_CHAR, -1, -1, dirs, -1);
             sendto(bot_client_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr *)&server_address, sizeof(server_address));
-
-            // printf("Update position message sent.\n");
-            fflush(stdout);
         }
     }
 }

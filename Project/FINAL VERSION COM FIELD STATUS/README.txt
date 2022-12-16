@@ -1,1 +1,0 @@
-Tem field status mas faltam coments e ver quando server sai os outros sairem tb
