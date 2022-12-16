@@ -33,11 +33,11 @@ int main(int argc, char *argv[]){
     int client_pid;
     client_pid =  getpid();
 
+    char msg_client[BUFFER_SIZE];
     message_t in_msg, out_msg;
     message_ballmov_t in_msg_ballmov;
-    // position_t* field = (position_t *) malloc(sizeof(position_t)*(MAX_PLAYERS+MAX_BOTS+MAX_PRIZES)+1);
-    int n_bytes; 
-    // int len = 0;
+    position_t* field = (position_t *) malloc(sizeof(position_t)*(MAX_PLAYERS+MAX_BOTS+MAX_PRIZES)+1);
+    int n_bytes, len = 0;
 
     out_msg = msg2send(conn, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
     sendto(client_sock, &out_msg, sizeof(message_t), 0, (struct sockaddr*) &server_address, sizeof(server_address));
@@ -54,8 +54,8 @@ int main(int argc, char *argv[]){
                 player.x = in_msg.x;
                 player.y = in_msg.y;
                 player.health = in_msg.health;
-                // field[0] = player;
-                // len = 1;
+                field[0] = player;
+                len = 1;
                 break; // go to the main loop
 
             default:
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]){
 
                 switch (in_msg_ballmov.type){
                 case error:
-                    printf("\033[11B");
+                    printf("\033[41B");
                     printf("\033[6D");
                     printf("GAME OVER! Your health reached 0.\n");
                     printf("\033[1B");
@@ -99,21 +99,18 @@ int main(int argc, char *argv[]){
                     exit(0);
 
                 case field_stat:	
-                    // for (int j=0; j<len; j++){
-                    //     draw_player(my_win,&field[j],false);
-                    //     if(field[j].health != -1){
-                    //        draw_health(&field[j], 2, false); 
-                    //     }
-                    // }
 
-                    // field = in_msg_ballmov.arr_field;
-                    // len = in_msg_ballmov.num_elem;
-                    // for(int i=0; i<len; i++){
-                    //     draw_player(my_win, &field[i], true);
-                    //     if(field[i].health != -1){
-                    //        draw_health(&field[i], 1, false); 
-                    //     }
-                    // }
+                    strcpy(msg_client,in_msg_ballmov.str);
+                    
+                    for (int j=0; j<len; j++){
+                        draw_player(my_win,&field[j],false);
+                        if(field[j].health != -1){
+                           draw_health(&field[j], 2, false); 
+                        }
+                    }
+
+                    len = in_msg_ballmov.num_elem;
+                    field = decode_msg_field(len, msg_client,my_win);
                     break;
 
                 default:
@@ -124,7 +121,9 @@ int main(int argc, char *argv[]){
          	
     }  
 
-    printf("\033[11B");
+    free(field);
+
+    printf("\033[41B");
     printf("\033[6D");
     printf("GAME OVER!\n");
     printf("\033[1B");

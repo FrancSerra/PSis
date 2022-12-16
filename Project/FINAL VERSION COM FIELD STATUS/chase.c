@@ -408,6 +408,99 @@ position_t* update_field(client_list* head){
 }
 
 
+
+
+char* field2msg(client_list* head){ //////////////////// NEW
+
+    char* msg_result = (char *) malloc(sizeof(char)*(BUFFER_SIZE)+1); // if == NULL retornar erro de alocação
+    char* msg = (char *) malloc(sizeof(char)*(BUFFER_SIZE)+1); // if == NULL retornar erro de alocação!!!!!!!!
+
+    char* delim;
+
+    delim = numToASCII(DELIM);    
+
+    for(client_list* temp = head->next; temp != NULL; temp = temp->next) {
+        
+        sprintf(msg,"%s","n"); //new
+        strcat(msg,delim);
+        strcat(msg_result,msg);
+        sprintf(msg,"%d",temp->x);
+        strcat(msg,delim);
+        strcat(msg_result,msg);
+        sprintf(msg,"%d",temp->y);
+        strcat(msg,delim);
+        strcat(msg_result,msg);
+        sprintf(msg,"%d",temp->c);
+        strcat(msg,delim);
+        strcat(msg_result,msg);
+        sprintf(msg,"%d",temp->health);
+        strcat(msg,delim);
+        strcat(msg_result,msg);
+
+    }
+
+    free(msg);
+    free(delim);
+
+    return msg_result;
+}
+
+char *numToASCII(int num) { //////////////////// NEW
+    char *string =(char*) malloc(sizeof(char)*BUFFER_SIZE);
+    // if (string == NULL){
+    //     printf("Error allocating memory\n");
+    //     return NULL;
+    // }
+    string[0] = num;
+    string[1] = 0;
+    return string;
+}
+
+position_t* decode_msg_field(int len, char str[BUFFER_SIZE], WINDOW* win){///////////NEW
+
+    int flag_x, flag_y, flag_health, letter;
+    char letter_c;
+
+    char* delim;
+    delim = numToASCII(DELIM);
+
+    position_t* field = (position_t *) malloc(sizeof(position_t)*(MAX_PLAYERS+MAX_BOTS+MAX_PRIZES)+1);
+
+    for(int i=0; i<len;i++){
+
+        if (i==0){
+            strtok(str, delim);
+        }
+        else{       
+            strtok(NULL, delim);
+        }
+
+        flag_x = atoi(strtok(NULL, delim));
+        flag_y = atoi(strtok(NULL, delim));
+        letter = atoi(strtok(NULL, delim));
+        letter_c = letter;
+        flag_health = atoi(strtok(NULL, delim));
+
+        field[i].c = letter_c;
+
+        field[i].x = flag_x;
+        field[i].y = flag_y;
+        field[i].health = flag_health;
+
+        draw_player(win, &field[i], true);
+        if(field[i].health != -1){
+            draw_health(&field[i], 1, false); 
+        }
+
+    }
+
+    free(delim);
+
+    return field;
+
+}
+
+
 // Comms
 message_t msg2send(msg_type type, int pid, char c, int x, int y, long int direction, int health) {
     message_t out_msg;
@@ -423,14 +516,13 @@ message_t msg2send(msg_type type, int pid, char c, int x, int y, long int direct
     return out_msg;
 }
 
-message_ballmov_t msg2send_ballmov(msg_type type, int pid, position_t* arr_field) {
+message_ballmov_t msg2send_ballmov(msg_type type, int num_elem, char str[BUFFER_SIZE]) {
 
     message_ballmov_t out_msg;
 
     out_msg.type = type;
-    out_msg.pid = pid;
-    out_msg.num_elem = num_bots + num_players + num_prizes;
-    out_msg.arr_field = arr_field;
+    out_msg.num_elem = num_elem;
+    strcpy(out_msg.str,str);
     
     return out_msg;
 }
