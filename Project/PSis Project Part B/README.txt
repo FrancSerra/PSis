@@ -2,8 +2,7 @@ READ ME:
 
 Group 31
 - Mariana Lima, 92707
-- Francisco Serra, 98873
-
+- Francisco Serra, 98873 
 How to compile:
 	$ make all
 

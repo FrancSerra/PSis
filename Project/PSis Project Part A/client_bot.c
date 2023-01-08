@@ -1,10 +1,8 @@
 #include "chase.h"
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]){
 
-    if (argc != 3)
-    {
+    if (argc != 3){
         printf("Error: Missing one argument.\n");
         exit(1);
     }
@@ -13,21 +11,16 @@ int main(int argc, char *argv[])
     int n_bots = atoi(argv[2]);
     int is_zero = strcmp(argv[2], "0");
 
-    if (n_bots < 0 || n_bots > MAX_BOTS)
-    {
+    if (n_bots < 0 || n_bots > MAX_BOTS){
         printf("Error: not valid number of bots.\nChoose a number between 0 and %d.\n", MAX_BOTS);
         exit(1);
     }
 
-    if (n_bots == 0)
-    {
-        if (is_zero != 0)
-        {
+    if (n_bots == 0){
+        if (is_zero != 0){
             printf("Error: not valid number of bots.\nChoose a number between 0 and %d.\n", MAX_BOTS);
             exit(1);
-        }
-        else
-        {
+        }else{
             printf("Zero bots added. Task completed.\n");
             exit(1);
         }
@@ -39,8 +32,7 @@ int main(int argc, char *argv[])
 
     // Initialize socket
     bot_client_sock = socket(AF_UNIX, SOCK_DGRAM, 0);
-    if (bot_client_sock == -1)
-    {
+    if (bot_client_sock == -1){
         perror("socket: ");
         exit(-1);
     }
@@ -55,8 +47,7 @@ int main(int argc, char *argv[])
     unlink(bot_client_address.sun_path);
     // Check if bind error
     int err = bind(bot_client_sock, (const struct sockaddr *)&bot_client_address, sizeof(bot_client_address));
-    if (err == -1)
-    {
+    if (err == -1){
         perror("bind");
         exit(-1);
     }
@@ -99,24 +90,19 @@ int main(int argc, char *argv[])
         char s2[MAX_BOTS + 1];
         srand(time(0));
 
-        while (1)
-        {
+        while (1){
             // Enters the loop
             sleep(3); // Waits 5 seconds
 
             int i;
-            for (i = 0; i < n_bots; i++)
-            {
+            for (i = 0; i < n_bots; i++){
                 // Generate random directions for bots to move
                 rand_number = (rand() % 4) + 1;
                 sprintf(s1, "%d", rand_number);
 
-                if (i == 0)
-                {
+                if (i == 0){
                     strcpy(s2, s1);
-                }
-                else
-                {
+                }else{
                     strcat(s2, s1);
                 }
             }

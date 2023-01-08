@@ -59,15 +59,12 @@ int main(int argc, char *argv[]){
     {
         printf("Failed connecting.\n");
         exit(-1);
-    }
-    else
-    {
+    }else{
         // Successfully connected
         printf("Added %d out of %d prizes.\n", in_msg.health, n_prizes);
         n_prizes = PRIZES_LOOP;
         printf("Prizes running...\n");
-        while (1)
-        {
+        while (1){
             // Enters the loopcd 
             sleep(5); // Waits 5 seconds
 
@@ -80,12 +77,8 @@ int main(int argc, char *argv[]){
 
             if (n_bytes != sizeof(message_t)){
                 printf("Failed communication.\n");
-            }
-
-            else
-            {
-                if (in_msg.type != prizes_conn)
-                {
+            }else{
+                if (in_msg.type != prizes_conn){
                     printf("Failed connecting.\n");
                 }
             }

@@ -31,6 +31,11 @@
 #define ZERO_ASCII 48 // 0 in ASCII
 #define BUFFER_SIZE 1000
 
+// include this more
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#define SOCK_PORT 5000
+//The port number should be between 4000 and 40000, and needs to be converted with the htons function.
 
 // Messages types
 typedef enum msg_type{
