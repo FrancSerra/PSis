@@ -24,8 +24,6 @@ int main(){
 
 
 	char linha[100];
-
-
 	char message[100];
 	char recv_message[100];
 
@@ -38,7 +36,7 @@ int main(){
 	server_addr.sin_port = htons(SOCK_PORT);
 	if( inet_pton(AF_INET, linha, &server_addr.sin_addr) < 1){
 		printf("no valid address: \n");
-		exit(-1);
+		exit(-1); 
 	}
 
 	while(1){

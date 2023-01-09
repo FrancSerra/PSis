@@ -22,10 +22,15 @@ int main(int argc, char *argv[]){
 
     //////////////  Socket identification //////////////
     struct sockaddr_in server_address;
-
+ 
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(SOCK_PORT);
-    inet_pton(AF_INET, argv[1], (struct sockaddr *) &server_address.sin_addr);
+    
+
+    if( inet_pton(AF_INET, argv[1], (struct sockaddr *) &server_address.sin_addr) < 1){
+		printf("no valid address: \n");
+		exit(-1); 
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////
 

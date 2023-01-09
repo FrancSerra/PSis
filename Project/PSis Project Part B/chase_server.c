@@ -7,11 +7,10 @@ int main(){
     //////////////  Create the socket //////////////
     int server_sock;
     server_sock = socket(AF_INET, SOCK_STREAM, 0);
-
     if (server_sock == -1){
         perror("socket: ");
         exit(-1);
-    }
+    } 
 
     //////////////  Socket identification //////////////
     struct sockaddr_in server_address, client_address;

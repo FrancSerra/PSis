@@ -14,11 +14,11 @@ int main(){
 
 	int sock_fd;
 	sock_fd= socket(AF_INET, SOCK_DGRAM, 0);
-	if (sock_fd == -1){
+	if (sock_fd == -1){ 
 		perror("socket: ");
 		exit(-1);
 	}
-
+ 
 	struct sockaddr_in local_addr;
 	local_addr.sin_family = AF_INET;
 	local_addr.sin_port = htons(SOCK_PORT);
