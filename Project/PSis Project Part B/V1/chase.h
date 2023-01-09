@@ -1,0 +1,82 @@
+#ifndef CHASE_H
+#define CHASE_H
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <fcntl.h>  
+#include <unistd.h>
+#include <ncurses.h>
+#include <time.h>
+#include <ctype.h>
+#include <pthread.h>
+#include <stddef.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+
+//The port number should be between 4000 and 40000, and needs to be converted with the htons function.
+#define SOCK_PORT 5000
+#define WINDOW_SIZE 20
+#define INITIAL_HEALTH 10
+
+#define UNUSED_CHAR 35 // # in ASCII
+
+// Messages types
+/*typedef enum msg_type{
+    conn, bot_conn, prizes_conn, ball_info, ball_mov, bot_mov, field_stat, health0, disconn, error
+} msg_type;*/
+
+typedef enum msg_type{
+    conn, ball_info, error
+} msg_type;
+
+// Struct messages
+typedef struct message_t{
+    msg_type type;      // message type
+    int pid;            // client PID
+    char c;             // client characters
+    int x;              // client position x
+    int y;              // client position y
+    long int direction; // direction to move
+    int health;         // client health
+} message_t;
+
+// Struct position
+typedef struct position_t {
+    int x, y;           // position x,y
+    char c;             // client character
+    int health;         // client health
+} position_t;
+
+// Struct list of clients
+typedef struct client_list{
+    int pid;                   // client PID
+    char c;                    // client character
+    int x, y;                  // client position x,y
+    int health;                // client health
+    int socket_id;             // socket id
+    struct client_list *next;  // pointer to the next client/element in the list
+} client_list;
+
+// Global variables 
+int num_elements;              // total number of players, bots and prizes
+WINDOW * message_win;                  // message window
+position_t player;                     // information of player 
+
+// Functions for lists and updates -- comments in file chase.c
+client_list* create_head_client_list();
+int insert_new_client(client_list* head, int pid, char c, int x, int y, int health, int socket_id);
+// int delete_client(client_list* head, int pid, WINDOW* win);
+client_list* search_position(client_list* head, int x, int y);
+int search_letter(client_list* head, char c);
+
+// Functions for communications (initialize and messages) -- comments in file chase.c
+message_t msg2send(msg_type type, int pid, char c, int x, int y, long int direction, int health);
+position_t initialize_player(client_list* head);
+
+
+#endif
