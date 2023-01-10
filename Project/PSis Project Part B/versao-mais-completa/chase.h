@@ -17,6 +17,7 @@
 #include <stddef.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include<signal.h>
 
 //The port number should be between 4000 and 40000, and needs to be converted with the htons function.
 #define SOCK_PORT 5000
@@ -24,12 +25,21 @@
 #define INITIAL_HEALTH 10
 #define UNUSED_CHAR 35 // # in ASCII
 #define ZERO_ASCII 48 // 0 in ASCII
-#define TIME_OUT 10
+#define TIME_OUT 5
+#define MAX_BOTS 10
+#define MAX_PRIZES 10
+#define INIT_PRIZES 5
+#define MAX_VALUE_PRIZES 53 // 5 in ASCII
+#define MIN_VALUE_PRIZES 49 // 1 in ASCII
+#define BOT_CHAR 42 // * in ASCII
+#define DELIM 36 // $ in ASCII
+#define BUFFER_SIZE 1000
 
 
 
-#define MAX_PLAYERS 10 // !!!!!!!!!!!
+#define MAX_PLAYERS 10 // !!!!!!!!!!! TIRAR DEPOIS!!!!!!
 
+// Messages types
 typedef enum msg_type{
     conn, ball_info, ball_mov, field_stat, health0, continue_game, error
 } msg_type;
@@ -37,7 +47,6 @@ typedef enum msg_type{
 // Struct messages
 typedef struct message_t{
     msg_type type;      // message type
-    int pid;            // client PID
     char c;             // client characters
     int x;              // client position x
     int y;              // client position y
@@ -54,7 +63,6 @@ typedef struct position_t {
 
 // Struct list of clients
 typedef struct client_list{
-    int pid;                   // client PID
     char c;                    // client character
     int x, y;                  // client position x,y
     int health;                // client health
@@ -70,17 +78,17 @@ int client_sock;
 
 // Functions for lists and updates -- comments in file chase.c
 client_list* create_head_client_list();
-int insert_new_client(client_list* head, int pid, char c, int x, int y, int health, int socket_id);
-int delete_client(client_list* head, int pid, WINDOW* win);
+int insert_new_client(client_list* head, char c, int x, int y, int health, int socket_id);
+int delete_client(client_list* head, int socket_id, WINDOW* win);
 client_list* search_position(client_list* head, int x, int y);
 int search_letter(client_list* head, char c);
-client_list* search_client(client_list* head, int pid);
+client_list* search_client(client_list* head, int socket_id);
 int delete_prizes(client_list* head, client_list* prize, WINDOW* win);
-// int health_0(client_list* head, client_list* player, WINDOW* win);
-int update_client(client_list* head, int pid, int direction, WINDOW* win);
+int health_0(client_list* head, client_list* player, WINDOW* win);
+int update_client(client_list* head, int socket_id, int direction, WINDOW* win);
 
 // Functions for communications (initialize and messages) -- comments in file chase.c
-message_t msg2send(msg_type type, int pid, char c, int x, int y, long int direction, int health);
+message_t msg2send(msg_type type, char c, int x, int y, long int direction, int health);
 position_t initialize_player(client_list* head);
 
 // Functions for graphical part (windows and draw players, bots and prizes in the field) -- comments in file chase.c
@@ -91,5 +99,10 @@ void move_client (client_list* client, WINDOW* win, int x, int y);
 
 // Handler functions
 void sig_handler(int signum);
+
+
+
+
+void print_client_list(client_list* node);
 
 #endif

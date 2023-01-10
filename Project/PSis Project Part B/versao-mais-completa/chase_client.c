@@ -2,11 +2,12 @@
 
 // Global variables
 int aux_health0; // 1 if health reached zero
+WINDOW *my_win;
 
-void* client_thread(void* arg){
+void* rcv_thread(void* arg) {
 
     int sock_fd = *(int*)arg;
-    int nbytes, key = -1;
+    int nbytes;
     message_t in_msg, out_msg;
 
 
@@ -16,25 +17,21 @@ void* client_thread(void* arg){
             break;
         }
 
-        switch (in_msg.type)
-        {
+        switch (in_msg.type) {
         case health0:
             aux_health0 = 1;
-
             alarm(TIME_OUT);
             
+            while(1){
+                if(aux_health0 == 0){
+                    alarm(0); //Cancel previous alarm
 
-            while(key != KEY_ENTER) {
-                key = wgetch(my_win);
-            }
-
-            alarm(0); //Cancel previous alarm
-
-            // 
-            out_msg = msg2send(continue_game, -1, UNUSED_CHAR, -1, -1, -1, -1);
-            send(client_sock, &out_msg, sizeof(message_t), 0); 
-            aux_health0 = 0;
-
+                    // Sends a continue_game message
+                    out_msg = msg2send(continue_game, UNUSED_CHAR, -1, -1, -1, -1);
+                    send(client_sock, &out_msg, sizeof(message_t), 0); 
+                    break;
+                }
+            }       
             break;
         
         case field_stat:
@@ -44,6 +41,8 @@ void* client_thread(void* arg){
             break;
         }
     }
+    close(sock_fd);
+    exit(-1);
 }
 
 int main(int argc, char *argv[]){
@@ -78,9 +77,6 @@ int main(int argc, char *argv[]){
         exit(-1);
     }
 
-    // generates own ID
-    int client_pid = getpid();
-
     // Register signal handler
     signal(SIGALRM,sig_handler); 
 
@@ -92,7 +88,7 @@ int main(int argc, char *argv[]){
         exit(-1);
     }
 
-    out_msg = msg2send(conn, client_pid, UNUSED_CHAR, -1, -1, -1, -1);
+    out_msg = msg2send(conn, UNUSED_CHAR, -1, -1, -1, -1);
     send(client_sock, &out_msg, sizeof(message_t), 0); 
 
     nbytes = recv(client_sock, &in_msg, sizeof(in_msg), 0);
@@ -124,7 +120,7 @@ int main(int argc, char *argv[]){
     }
 
     //creates the window and draws the player
-    WINDOW *my_win = generate_window();
+    my_win = generate_window();
     draw_player(my_win, &player, true);
     draw_health(&player, 0, true);
 
@@ -133,21 +129,22 @@ int main(int argc, char *argv[]){
 
     //waits for user input
     while (key != 27 && key != 'q'){  // ESC and q inputs close que program
+
         key = wgetch(my_win);
 
+        if (aux_health0 == 1 && (key == 'Y' || key == 'y')){
+            aux_health0 = 0;
+        }
+
+
         if ((key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN) && aux_health0 == 0){
-
             // sends the inputed key to the server
-            out_msg = msg2send(ball_mov, client_pid, UNUSED_CHAR, -1, -1, key, -1);
+            out_msg = msg2send(ball_mov, UNUSED_CHAR, -1, -1, key, -1);
             send(client_sock, &out_msg, sizeof(message_t), 0);
-
             // // receives the answer
             // n_bytes = recvfrom(client_sock, &in_msg_ballmov, sizeof(message_ballmov_t), 0, (struct sockaddr *)&server_address, (socklen_t *)&server_address_size);
-
             // if (n_bytes == sizeof(message_ballmov_t)){
-
             //     switch (in_msg_ballmov.type){
-
             //     case error:
             //         printf("\033[41B");
             //         printf("\033[6D");
@@ -155,31 +152,27 @@ int main(int argc, char *argv[]){
             //         printf("\033[1B");
             //         printf("\033[49D");
             //         exit(0);
-
             //     case field_stat:
             //         //stores the field info encoded by a string
             //         strcpy(msg_client, in_msg_ballmov.str);
-
             //         //string decode process
             //         for (int j = 0; j < len; j++){
             //             // Deletes the previous positions
             //             draw_player(my_win, &field[j], false);
-
             //             if (field[j].health != -1){
             //                 // Deletes the previous health
             //                 draw_health(&field[j], 2, false);
             //             }
             //         }
-
             //         len = in_msg_ballmov.num_elem;
             //         field = decode_msg_field(len, msg_client, my_win);
             //         break;
-
             //     default:
             //         break;
             //     }
             // }
         }
+
     }    
     
     close(client_sock);
