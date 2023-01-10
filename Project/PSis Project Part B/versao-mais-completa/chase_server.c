@@ -25,31 +25,19 @@ void* client_thread(void* arg){
             new_play.health = client->health;
 
             draw_health(&new_play, 1, false);
+            field_st2all (head);
         }
 
         // updates the board
         if (in_msg.type == ball_mov) {
             err_update = update_client(head, sock_fd, in_msg.direction, my_win);
-        }
-        // // If an error occurs, returns an error message to the player
-        // if (err_update == -1){
-        //     sprintf(msg, " ");
-        //     out_msg_ballmov = msg2send_ballmov(error, num_elem, msg);
-
-        // }
-        // else{ // If the update is successful
-
-        //     //encodes the field status in an unique string
-        //     msg_aux = field2msg(head);
-        //     strcpy(msg, msg_aux);
-
-        //     //and sends it to the player for him to update it's own board.
-        //     out_msg_ballmov = msg2send_ballmov(field_stat, num_elem, msg);
-        //     free(msg_aux);
-        // }
-
-        //     sendto(server_sock, &out_msg_ballmov, sizeof(message_ballmov_t), 0, (struct sockaddr *)&client_address, sizeof(client_address));
         
+            // If an error occurs, returns an error message to the player
+            if (err_update == -1){
+                out_msg = msg2send(error, UNUSED_CHAR, -1, -1, -1, -1);
+                send(sock_fd, &out_msg, sizeof(message_t), 0);
+            }
+        }
     }
 
     //deletes the client from the list of clients
@@ -62,7 +50,7 @@ void* client_thread(void* arg){
         num_elements--;
     }
 
-
+    field_st2all (head);
     close(sock_fd);
     pthread_exit(NULL);
 }
@@ -121,7 +109,7 @@ int main(int argc, char *argv[])
             nbytes = recv(sock_fd, &in_msg, sizeof(in_msg), 0);
             if(nbytes == sizeof(message_t) && in_msg.type == conn){
 
-                if (num_elements < (WINDOW_SIZE*WINDOW_SIZE)) {
+                if (num_elements < ((WINDOW_SIZE-2)*(WINDOW_SIZE-2))) {
                     
                     init_pos = initialize_player(head);     //Initializes the player position: assignes an empty board position and unused letter
                     new_client_err = insert_new_client(head, init_pos.c, init_pos.x, init_pos.y, INITIAL_HEALTH, sock_fd);   // adds the player client to the list
@@ -155,6 +143,8 @@ int main(int argc, char *argv[])
                 send(sock_fd, &out_msg, sizeof(message_t), 0);
                 
                 if(flag_thread == 1) {
+                    // // Updates the field for every player
+                    // field_st2all (head);
                     pthread_create(&thread_id, NULL, client_thread,(void*)&sock_fd);
                 }
                 else {

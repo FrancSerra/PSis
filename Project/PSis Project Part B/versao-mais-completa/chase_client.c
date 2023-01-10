@@ -3,13 +3,15 @@
 // Global variables
 int aux_health0; // 1 if health reached zero
 WINDOW *my_win;
+int len;
 
 void* rcv_thread(void* arg) {
 
     int sock_fd = *(int*)arg;
     int nbytes;
     message_t in_msg, out_msg;
-
+    char msg_client[BUFFER_SIZE];
+    message_ballmov_t in_msg_ballmov;
 
     while(1){
         nbytes = recv(sock_fd, &in_msg, sizeof(in_msg), 0);
@@ -35,12 +37,31 @@ void* rcv_thread(void* arg) {
             break;
         
         case field_stat:
-            // .....
+            nbytes = recv(sock_fd, &in_msg_ballmov, sizeof(in_msg_ballmov), 0);
+            if(nbytes != sizeof(message_ballmov_t) || in_msg_ballmov.type != field_stat){
+                break;
+            }
+
+            //stores the field info encoded by a string
+            strcpy(msg_client, in_msg_ballmov.str);
+            //string decode process
+            for (int j = 0; j < len; j++){
+                // Deletes the previous positions
+                draw_player(my_win, &field[j], false);
+                if (field[j].health != -1){
+                    // Deletes the previous health
+                    draw_health(&field[j], 2, false);
+                }
+            }
+            len = in_msg_ballmov.num_elem;
+            field = decode_msg_field(len, msg_client, my_win);
             break;
         default:
             break;
         }
     }
+    
+    free(field);
     close(sock_fd);
     exit(-1);
 }
@@ -70,6 +91,8 @@ int main(int argc, char *argv[]){
     long int key = -1;
     pthread_t thread_id;
     aux_health0 = 0;
+    field = (position_t *)malloc(sizeof(position_t) * (MAX_PLAYERS + MAX_BOTS + MAX_PRIZES) + 1);
+    len = 0;
 
     // If the provided address is invalid, exit.
     if(inet_aton(argv[1], &server_address.sin_addr) < 1){
@@ -84,6 +107,7 @@ int main(int argc, char *argv[]){
     int err = connect(client_sock, (struct sockaddr*) &server_address, sizeof(server_address));
     if(err == -1){
         perror("connect");
+        free(field);
         close(client_sock);
         exit(-1);
     }
@@ -95,6 +119,7 @@ int main(int argc, char *argv[]){
 
     if (nbytes != sizeof(message_t)) {
         perror("Error");
+        free(field);
         close(client_sock);
         exit(-1);
     }
@@ -102,6 +127,7 @@ int main(int argc, char *argv[]){
     switch (in_msg.type){
         case error:
             printf("Error connecting this client.\n");
+            free(field);
             close(client_sock);
             exit(-1);
         case ball_info:  // stores the assigned parameters by the server
@@ -110,11 +136,12 @@ int main(int argc, char *argv[]){
             player.y = in_msg.y;
             player.health = in_msg.health;
             
-            // field[0] = player;
-            // len = 1;
+            field[0] = player;
+            len = 1;
             break; // go to the main loop
         default:
             printf("Error: You have been disconnected.\n");
+            free(field);
             close(client_sock);
             exit(-1);
     }
@@ -141,39 +168,9 @@ int main(int argc, char *argv[]){
             // sends the inputed key to the server
             out_msg = msg2send(ball_mov, UNUSED_CHAR, -1, -1, key, -1);
             send(client_sock, &out_msg, sizeof(message_t), 0);
-            // // receives the answer
-            // n_bytes = recvfrom(client_sock, &in_msg_ballmov, sizeof(message_ballmov_t), 0, (struct sockaddr *)&server_address, (socklen_t *)&server_address_size);
-            // if (n_bytes == sizeof(message_ballmov_t)){
-            //     switch (in_msg_ballmov.type){
-            //     case error:
-            //         printf("\033[41B");
-            //         printf("\033[6D");
-            //         printf("GAME OVER! Your health reached 0.\n");
-            //         printf("\033[1B");
-            //         printf("\033[49D");
-            //         exit(0);
-            //     case field_stat:
-            //         //stores the field info encoded by a string
-            //         strcpy(msg_client, in_msg_ballmov.str);
-            //         //string decode process
-            //         for (int j = 0; j < len; j++){
-            //             // Deletes the previous positions
-            //             draw_player(my_win, &field[j], false);
-            //             if (field[j].health != -1){
-            //                 // Deletes the previous health
-            //                 draw_health(&field[j], 2, false);
-            //             }
-            //         }
-            //         len = in_msg_ballmov.num_elem;
-            //         field = decode_msg_field(len, msg_client, my_win);
-            //         break;
-            //     default:
-            //         break;
-            //     }
-            // }
         }
 
     }    
-    
+    free(field);
     close(client_sock);
 }

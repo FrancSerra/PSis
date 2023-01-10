@@ -21,7 +21,7 @@
 
 //The port number should be between 4000 and 40000, and needs to be converted with the htons function.
 #define SOCK_PORT 5000
-#define WINDOW_SIZE 20
+#define WINDOW_SIZE 4
 #define INITIAL_HEALTH 10
 #define UNUSED_CHAR 35 // # in ASCII
 #define ZERO_ASCII 48 // 0 in ASCII
@@ -61,6 +61,13 @@ typedef struct position_t {
     int health;         // client health
 } position_t;
 
+// Struct messages to send in fiel_status message type
+typedef struct message_ballmov_t{
+    msg_type type;          // message type
+    int num_elem;           // total number of elements in the field (players, bots and prizes)
+    char str[BUFFER_SIZE];  // string to send fiel information
+} message_ballmov_t;
+
 // Struct list of clients
 typedef struct client_list{
     char c;                    // client character
@@ -75,6 +82,7 @@ int num_elements, num_prizes;   // total number of players, bots and prizes
 WINDOW * message_win;          // message window
 position_t player;             // information of player 
 int client_sock;
+position_t* field;
 
 // Functions for lists and updates -- comments in file chase.c
 client_list* create_head_client_list();
@@ -87,8 +95,15 @@ int delete_prizes(client_list* head, client_list* prize, WINDOW* win);
 int health_0(client_list* head, client_list* player, WINDOW* win);
 int update_client(client_list* head, int socket_id, int direction, WINDOW* win);
 
+// Functions to send message of type field_status 
+char* field2msg(client_list* head);
+char *numToASCII(int num);
+position_t* decode_msg_field(int len, char str[BUFFER_SIZE], WINDOW* win);
+void field_st2all (client_list* head);
+
 // Functions for communications (initialize and messages) -- comments in file chase.c
 message_t msg2send(msg_type type, char c, int x, int y, long int direction, int health);
+message_ballmov_t msg2send_ballmov(msg_type type, int num_elem, char str[BUFFER_SIZE]);
 position_t initialize_player(client_list* head);
 
 // Functions for graphical part (windows and draw players, bots and prizes in the field) -- comments in file chase.c
@@ -99,10 +114,5 @@ void move_client (client_list* client, WINDOW* win, int x, int y);
 
 // Handler functions
 void sig_handler(int signum);
-
-
-
-
-void print_client_list(client_list* node);
 
 #endif

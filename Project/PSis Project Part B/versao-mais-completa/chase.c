@@ -281,6 +281,8 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
         draw_player(win, &old_play, false);
         // Moves the player to the new position and draws it
         move_client(player, win, x, y);
+        // Updates the field for every player
+        field_st2all (head);
     }
     // If the new position is occupied
     else{ 
@@ -298,6 +300,9 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
 
             // Decrements other player health and checks if reached 0
             other_player->health--;
+            // Updates the field for every player
+            field_st2all (head);
+
             is_health0 = health_0(head, other_player, win) ;
                 if (is_health0) {
                  return 0;
@@ -332,18 +337,167 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
             // Delete "eaten" prize and decrement number of prizes in the field
             err = delete_prizes(head, other_player, win);
             num_prizes --;
+            num_elements --;
             if (err != -1) {
-                // Updates the field
+                // Updates the server field
                 draw_player(win, &old_play, false);
                 move_client(player, win, x, y);
+
+                // Updates the field for every player
+                field_st2all (head);
             }   
         }
-        // If the other is a bot, nothing happens (posiiton does not change)
+        // If the other is a bot, nothing happens (position does not change)
     }
 
     return 0;
 }
 
+
+// Functions to send message of type field_status 
+char* field2msg(client_list* head){
+// Function that stores in a string the client list information to be sent in a message (type field_status)
+// Inputs: pointer to the head node
+// Outputs: message string
+
+    char* msg_result = (char *) malloc(sizeof(char)*(BUFFER_SIZE)+1); 
+    char* msg = (char *) malloc(sizeof(char)*(BUFFER_SIZE)+1); 
+
+    // Check success of memory allocation
+    if(msg_result == NULL || msg == NULL){ 
+        printf("Error allocating memory.\n");
+        return NULL;
+    }
+
+    char* delim;
+
+    // Create the delimiter that will be sent inside the message
+    delim = numToASCII(DELIM);    
+
+    for(client_list* temp = head->next; temp != NULL; temp = temp->next) {
+        
+        sprintf(msg,"%s","n"); // adds a flag to separate players
+        strcat(msg,delim);
+        strcat(msg_result,msg);
+        sprintf(msg,"%d",temp->x); // adds position x
+        strcat(msg,delim);
+        strcat(msg_result,msg);
+        sprintf(msg,"%d",temp->y); // adds position y
+        strcat(msg,delim);
+        strcat(msg_result,msg);
+        sprintf(msg,"%d",temp->c); // adds character
+        strcat(msg,delim);
+        strcat(msg_result,msg);
+        sprintf(msg,"%d",temp->health); // adds health
+        strcat(msg,delim);
+        strcat(msg_result,msg);
+
+    }
+
+    free(msg); // free allocated memory
+    free(delim); // free allocated memory
+
+    return msg_result;
+}
+
+char *numToASCII(int num) { 
+// Function that creates the string that will delimit the parameters in the message to be sent
+// Inputs: ASCII code of the delimiter
+// Outputs: delimiter string
+
+    char *string =(char*) malloc(sizeof(char)*BUFFER_SIZE);
+
+    // Check success of memory allocation
+    if (string == NULL){
+        printf("Error allocating memory\n");
+        return NULL;
+    }
+
+    string[0] = num;
+    string[1] = 0;
+    return string;
+}
+
+position_t* decode_msg_field(int len, char str[BUFFER_SIZE], WINDOW* win){
+// Function that decodes the message sent in the field_status reply
+// Inputs: number of elements in the client list, received string message, window
+// Outputs: array of structs position_t with all info about the elements in the field
+
+    int flag_x, flag_y, flag_health, letter;
+    char letter_c;
+
+    char* delim;
+    delim = numToASCII(DELIM);
+
+    position_t* field = (position_t *) malloc(sizeof(position_t)*(MAX_PLAYERS+MAX_BOTS+MAX_PRIZES)+1);
+    
+    // Check success of memory allocation
+    if (field == NULL){
+        printf("Error allocating memory\n");
+        return NULL;
+    }
+
+    // For all elements in the string
+    for(int i=0; i<len;i++){
+
+        // Decodes the string
+        if (i==0){
+            strtok(str, delim);
+        }
+        else{       
+            strtok(NULL, delim);
+        }
+
+        flag_x = atoi(strtok(NULL, delim));
+        flag_y = atoi(strtok(NULL, delim));
+        letter = atoi(strtok(NULL, delim));
+        letter_c = letter;
+        flag_health = atoi(strtok(NULL, delim));
+
+        // Stores the information
+        field[i].c = letter_c;
+        field[i].x = flag_x;
+        field[i].y = flag_y;
+        field[i].health = flag_health;
+
+        // Updates the field
+        draw_player(win, &field[i], true);
+        if(field[i].health != -1){
+            draw_health(&field[i], 1, false); 
+        }
+
+    }
+
+    free(delim); // free allocated memory
+
+    return field;
+
+}
+
+void field_st2all (client_list* head) {
+    message_t out_msg;
+    message_ballmov_t out_msg_ballmov;
+    client_list* temp;
+    char *msg_aux;
+    char msg[BUFFER_SIZE];
+    out_msg = msg2send(field_stat, UNUSED_CHAR, -1, -1, -1, -1);
+
+    //encodes the field status in an unique string
+    msg_aux = field2msg(head);
+    strcpy(msg, msg_aux);
+
+    //and sends it to the player for him to update it's own board.
+    out_msg_ballmov = msg2send_ballmov(field_stat, num_elements, msg);
+    free(msg_aux);
+
+    for (temp = head->next; temp != NULL; temp = temp->next) {
+        if (temp->socket_id != -1) {
+            send(temp->socket_id, &out_msg, sizeof(message_t), 0);
+            send(temp->socket_id, &out_msg_ballmov, sizeof(message_ballmov_t), 0);
+        }
+    }
+    
+}
 
 // Functions for communications (initialize and messages)
 
@@ -364,12 +518,26 @@ message_t msg2send(msg_type type, char c, int x, int y, long int direction, int 
     return out_msg;
 }
 
+message_ballmov_t msg2send_ballmov(msg_type type, int num_elem, char str[BUFFER_SIZE]) {
+// Function that fills in info in the message struct (in case of field_status type)
+// Inputs: message type, total number of elements in the list, string
+// Outputs: message to be sent
+
+    message_ballmov_t out_msg;
+
+    out_msg.type = type;
+    out_msg.num_elem = num_elem;
+    strcpy(out_msg.str,str);
+    
+    return out_msg;
+}
+
 position_t initialize_player(client_list* head) {
 // Function that initializes the player
 // Inputs: pointer to head node
 // Outputs: information to be printed (position x,y, character, health)
 
-    srand(time(0)); // initialize random number generators
+    srand(time(NULL)); // initialize random number generators
 
     position_t init_pos; // initial position
     char c = 64; // '@' in ASCII, 65 = 'A'
@@ -528,26 +696,7 @@ void move_client (client_list* client, WINDOW* win, int x, int y){
 
 void sig_handler(int signum){
   printf("Key ENTER not pressed\n");
+  free(field);
   close(client_sock);
   exit(-1);
-}
-
-
-
-
-
-
-
-void print_client_list(client_list* node){
-// Function that prints the list (used for debug)
-// Inputs: pointer to the node
-// Outputs: --
-
-    node = node->next;
-
-    // Print information and move forward
-    while (node != NULL){
-       printf("Letter: %c\n Pos_x: %d\n Pos_y: %d\n Health: %d\n", node->c, node->x ,node->y, node->health);
-       node = node->next;
-    }
 }
