@@ -21,11 +21,11 @@
 
 //The port number should be between 4000 and 40000, and needs to be converted with the htons function.
 #define SOCK_PORT 5000
-#define WINDOW_SIZE 4
+#define WINDOW_SIZE 20
 #define INITIAL_HEALTH 10
 #define UNUSED_CHAR 35 // # in ASCII
 #define ZERO_ASCII 48 // 0 in ASCII
-#define TIME_OUT 5
+#define TIME_OUT 10
 #define MAX_BOTS 10
 #define MAX_PRIZES 10
 #define INIT_PRIZES 5
@@ -50,7 +50,7 @@ typedef struct message_t{
     char c;             // client characters
     int x;              // client position x
     int y;              // client position y
-    long int direction; // direction to move
+    int direction;      // direction to move
     int health;         // client health
 } message_t;
 
@@ -102,7 +102,7 @@ position_t* decode_msg_field(int len, char str[BUFFER_SIZE], WINDOW* win);
 void field_st2all (client_list* head);
 
 // Functions for communications (initialize and messages) -- comments in file chase.c
-message_t msg2send(msg_type type, char c, int x, int y, long int direction, int health);
+message_t msg2send(msg_type type, char c, int x, int y, int direction, int health);
 message_ballmov_t msg2send_ballmov(msg_type type, int num_elem, char str[BUFFER_SIZE]);
 position_t initialize_player(client_list* head);
 

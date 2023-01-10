@@ -78,7 +78,7 @@ int delete_client(client_list* head, int socket_id, WINDOW* win){
 
         // delete player and its health from the window
         draw_player(win, &delete_pos, false);
-        draw_health(&delete_pos, 2, false);
+        draw_health(&delete_pos, 1, false);
 
         free(temp); // free old head
         return 1;   
@@ -104,7 +104,7 @@ int delete_client(client_list* head, int socket_id, WINDOW* win){
 
     // delete player and its health from the window 
     draw_player(win, &delete_pos, false);
-    draw_health(&delete_pos, 2, false);
+    draw_health(&delete_pos, 1, false);
 
     free(temp); // Free memory
     return 1;   //returns 1 if key was present and deleted
@@ -216,7 +216,7 @@ int health_0(client_list* head, client_list* player, WINDOW* win) {
         new_play.c = player->c;
         new_play.health = player->health;
 
-        draw_health(&new_play, 1, false);
+        draw_health(&new_play, 0, false);
         out_msg = msg2send(health0, UNUSED_CHAR, -1, -1, -1, -1);
         send(player->socket_id, &out_msg, sizeof(message_t), 0);
         return 1;
@@ -290,29 +290,30 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
         // If the other is a player (position does not change)
         if (isalpha(other_player->c) != 0){
             
-            // Increments moving player health and updates on the screen
-            if (player->health < INITIAL_HEALTH){
-                player->health++;
-                new_play.c = player->c;
-                new_play.health = player->health;
-                draw_health(&new_play, 1, false);
-            }
-
-            // Decrements other player health and checks if reached 0
-            other_player->health--;
-            // Updates the field for every player
-            field_st2all (head);
-
-            is_health0 = health_0(head, other_player, win) ;
-                if (is_health0) {
-                 return 0;
+            if(other_player->health > 0) {
+                // Increments moving player health and updates on the screen
+                if (player->health < INITIAL_HEALTH){
+                    player->health++;
+                    new_play.c = player->c;
+                    new_play.health = player->health;
+                    draw_health(&new_play, 0, false);
                 }
 
-            // Updates other player's health on the screen
-            new_play.c = other_player->c;
-            new_play.health = other_player->health;
-            draw_health(&new_play, 1, false);
+                // Decrements other player health and checks if reached 0
+                other_player->health--;
+                // Updates the field for every player
+                field_st2all (head);
 
+                is_health0 = health_0(head, other_player, win) ;
+                    if (is_health0) {
+                     return 0;
+                    }
+
+                // Updates other player's health on the screen
+                new_play.c = other_player->c;
+                new_play.health = other_player->health;
+                draw_health(&new_play, 0, false);
+            }
             
         }
         // If the other is a prize
@@ -332,7 +333,7 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
 
                 new_play.c = player->c;
                 new_play.health = player->health;
-                draw_health(&new_play, 1, false);
+                draw_health(&new_play, 0, false);
             }
             // Delete "eaten" prize and decrement number of prizes in the field
             err = delete_prizes(head, other_player, win);
@@ -355,6 +356,7 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
 
 
 // Functions to send message of type field_status 
+
 char* field2msg(client_list* head){
 // Function that stores in a string the client list information to be sent in a message (type field_status)
 // Inputs: pointer to the head node
@@ -463,7 +465,7 @@ position_t* decode_msg_field(int len, char str[BUFFER_SIZE], WINDOW* win){
         // Updates the field
         draw_player(win, &field[i], true);
         if(field[i].health != -1){
-            draw_health(&field[i], 1, false); 
+            draw_health(&field[i], 0, false); 
         }
 
     }
@@ -501,7 +503,7 @@ void field_st2all (client_list* head) {
 
 // Functions for communications (initialize and messages)
 
-message_t msg2send(msg_type type, char c, int x, int y, long int direction, int health) {
+message_t msg2send(msg_type type, char c, int x, int y, int direction, int health) {
 // Function that fills in info in the message struct
 // Inputs: message type, client char, client position x,y, direction to move, client health
 // Outputs: message to be sent
@@ -618,7 +620,7 @@ void draw_health(position_t * player, int to_do, int conn_client) {
 // Inputs: information to be printed, flag to-do, flag connected client
 // Outputs: --
 
-    // to_do : 0 - iniciar msg box health, 1 - editar player health, 2 - eliminar player health
+    // to_do : 1 - editar player health, 2 - eliminar player health
     int aux = 1;
     int c = 65; // 'A' in ASCII
  
@@ -637,16 +639,8 @@ void draw_health(position_t * player, int to_do, int conn_client) {
         }
         switch (to_do)
         {
-        // Initialize message window
-        case 0: 
-            for(int i=1; i<=MAX_PLAYERS; i++) {
-                mvwprintw(message_win, i,2,"-----");
-            }
-            wrefresh(message_win);
-            break;
-
         // Edit player's health
-        case 1:
+        case 0:
             mvwprintw(message_win, aux,2,"%c:             ", player->c);
             if (player->health >= 0) {
                 mvwprintw(message_win, aux,2,"%c: %d", player->c, player->health);
@@ -658,9 +652,9 @@ void draw_health(position_t * player, int to_do, int conn_client) {
             break;
         
         // Deletes player's health, cleans the message window
-        case 2:
-            mvwprintw(message_win, aux,2,"            ");
-            mvwprintw(message_win, aux,2,"-----");
+        case 1:
+            mvwprintw(message_win, aux,2,"     ");
+            // mvwprintw(message_win, aux,2,"-----");
             wrefresh(message_win);
             break;
         

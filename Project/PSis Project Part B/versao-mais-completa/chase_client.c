@@ -50,7 +50,7 @@ void* rcv_thread(void* arg) {
                 draw_player(my_win, &field[j], false);
                 if (field[j].health != -1){
                     // Deletes the previous health
-                    draw_health(&field[j], 2, false);
+                    draw_health(&field[j], 1, false);
                 }
             }
             len = in_msg_ballmov.num_elem;
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]){
 
     message_t in_msg, out_msg;
     int nbytes;
-    long int key = -1;
+    int key = -1;
     pthread_t thread_id;
     aux_health0 = 0;
     field = (position_t *)malloc(sizeof(position_t) * (MAX_PLAYERS + MAX_BOTS + MAX_PRIZES) + 1);

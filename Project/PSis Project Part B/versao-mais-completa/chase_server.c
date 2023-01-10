@@ -24,7 +24,7 @@ void* client_thread(void* arg){
             new_play.c = client->c;
             new_play.health = client->health;
 
-            draw_health(&new_play, 1, false);
+            draw_health(&new_play, 0, false);
             field_st2all (head);
         }
 
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
                         // Draws the new player in the server board
 
                         draw_player(my_win, &init_pos, true);
-                        draw_health(&init_pos, 1, false);
+                        draw_health(&init_pos, 0, false);
 
                         //sends a message to the player containing the assigned, position and character 
                         out_msg = msg2send(ball_info, init_pos.c, init_pos.x, init_pos.y, -1, INITIAL_HEALTH);
