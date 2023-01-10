@@ -288,32 +288,32 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
     else{ 
 
         // If the other is a player (position does not change)
-        if (isalpha(other_player->c) != 0){
+        if (isalpha(other_player->c) != 0 && other_player->health > 0){
             
-            if(other_player->health > 0) {
-                // Increments moving player health and updates on the screen
-                if (player->health < INITIAL_HEALTH){
+
+            // Increments moving player health and updates on the screen
+            if (player->health < INITIAL_HEALTH){
                     player->health++;
                     new_play.c = player->c;
                     new_play.health = player->health;
                     draw_health(&new_play, 0, false);
                 }
 
-                // Decrements other player health and checks if reached 0
-                other_player->health--;
-                // Updates the field for every player
-                field_st2all (head);
+            // Decrements other player health and checks if reached 0
+            other_player->health--;
+            // Updates the field for every player
+            field_st2all (head);
 
-                is_health0 = health_0(head, other_player, win) ;
-                    if (is_health0) {
+            is_health0 = health_0(head, other_player, win) ;
+                if (is_health0) {
                      return 0;
                     }
 
-                // Updates other player's health on the screen
-                new_play.c = other_player->c;
-                new_play.health = other_player->health;
-                draw_health(&new_play, 0, false);
-            }
+            // Updates other player's health on the screen
+            new_play.c = other_player->c;
+            new_play.health = other_player->health;
+            draw_health(&new_play, 0, false);
+            
             
         }
         // If the other is a prize
@@ -353,6 +353,93 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
 
     return 0;
 }
+
+client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* win) {
+// Function that updates bots in the list and on the screen
+// Inputs: pointer to the head node, pointer to an aux node, flag direction, window
+// Outputs: pointer to the node
+
+    int x,y;
+    client_list *other_client;
+    position_t new_play, old_play;
+
+    // Search in the list
+    for (client_list* temp = aux->next; temp != NULL; temp = temp->next)
+    {   
+        // If it is a bot
+        if (temp->c == BOT_CHAR){
+
+            x = temp->x; // bot position: x
+            y = temp->y; // bot position: y
+
+            // Stores the last position
+            old_play.c = temp->c;
+            old_play.x = temp->x;
+            old_play.y = temp->y;
+
+            // Moves up           
+            if (mod == 1){
+                if (y != 1){
+                    y--;
+                }
+            }
+            // Moves down
+            if (mod == 2){
+                if (y != WINDOW_SIZE - 2){
+                    y++;
+                }
+            }
+            // Moves to the left
+            if (mod == 3){
+                if (x != 1){
+                    x--;
+                }
+            }
+            // Moves to the right
+            if (mod == 4) {
+                if (x != WINDOW_SIZE - 2){
+                    x++;
+                }
+            }
+
+            // Checks who is in that landing place (new position)
+            other_client = search_position(head, x, y);
+
+            // If the new position is empty or if it is its current position
+            if (other_client == NULL || other_client == temp){ 
+
+                // Clean the older position
+                draw_player(win, &old_play, false);
+                // Move the player to the new position and draw it
+                move_client(temp, win, x, y);
+                field_st2all(head);
+            }
+            // If the new position is occupied
+            else{ 
+                // Occupied by a player
+                if (isalpha(other_client->c) != 0 && other_client->health > 0){
+
+                    
+                    // Decrements that player's health
+                    other_client->health--;
+                    field_st2all(head);
+                    int is_health0 = health_0(head, other_client, win);
+                    if (is_health0) {
+                        return temp;
+                    }
+
+                    new_play.c = other_client->c;
+                    new_play.health = other_client->health;
+                    draw_health(&new_play, 0, false);
+                }
+                // If the other is a bot or prize, nothing happens
+            }   
+            return temp; 
+        }
+    }
+    return NULL;
+}
+
 
 
 // Functions to send message of type field_status 
@@ -571,6 +658,35 @@ position_t initialize_player(client_list* head) {
     // stores the letter and the INITIAL_HEALTH
     init_pos.c = c;
     init_pos.health = INITIAL_HEALTH;
+    return init_pos;
+}
+
+position_t initialize_bot_prizes(client_list *head, int bot){
+// Function that initializes the bots/prizes (similar to the function initialize_player)
+// Inputs: pointer to head node, flag bot
+// Outputs: information to be printed (position x,y, character, health)
+
+    srand(time(NULL));
+    position_t init_pos;
+
+    // Generate a random position and search in the list if that position is occupied
+    init_pos.x = (rand() % (WINDOW_SIZE - 2 - 1 + 1)) + 1;
+    init_pos.y = (rand() % (WINDOW_SIZE - 2 - 1 + 1)) + 1;
+
+    while (search_position(head, init_pos.x, init_pos.y) != NULL){ 
+        init_pos.x = (rand() % (WINDOW_SIZE - 2 - 1 + 1)) + 1;
+        init_pos.y = (rand() % (WINDOW_SIZE - 2 - 1 + 1)) + 1;
+    }
+
+    // If its a bot, stores bot character
+    if(bot) {
+        init_pos.c = BOT_CHAR;
+    }
+    // If its a prize, generates a random number between the defined values and stores it
+    else {
+        init_pos.c = (rand() % (MAX_VALUE_PRIZES - MIN_VALUE_PRIZES + 1)) + MIN_VALUE_PRIZES;
+    }
+    init_pos.health = -1; // health is not used for bots and prizes (assigned value -1)
     return init_pos;
 }
 

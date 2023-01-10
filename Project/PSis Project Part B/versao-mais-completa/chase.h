@@ -25,8 +25,11 @@
 #define INITIAL_HEALTH 10
 #define UNUSED_CHAR 35 // # in ASCII
 #define ZERO_ASCII 48 // 0 in ASCII
-#define TIME_OUT 10
+#define TIME_OUT 10 // seconds waiting for continue_game
+#define TIME_GENERATE_PRIZE 5 // seconds waiting for a new prize to be generated
+#define TIME_UPDATE_BOTS 3 // seconds waiting for updating bots positions
 #define MAX_BOTS 10
+#define MIN_BOTS 1
 #define MAX_PRIZES 10
 #define INIT_PRIZES 5
 #define MAX_VALUE_PRIZES 53 // 5 in ASCII
@@ -94,6 +97,7 @@ client_list* search_client(client_list* head, int socket_id);
 int delete_prizes(client_list* head, client_list* prize, WINDOW* win);
 int health_0(client_list* head, client_list* player, WINDOW* win);
 int update_client(client_list* head, int socket_id, int direction, WINDOW* win);
+client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* win);
 
 // Functions to send message of type field_status 
 char* field2msg(client_list* head);
@@ -105,6 +109,7 @@ void field_st2all (client_list* head);
 message_t msg2send(msg_type type, char c, int x, int y, int direction, int health);
 message_ballmov_t msg2send_ballmov(msg_type type, int num_elem, char str[BUFFER_SIZE]);
 position_t initialize_player(client_list* head);
+position_t initialize_bot_prizes(client_list *head, int bot);
 
 // Functions for graphical part (windows and draw players, bots and prizes in the field) -- comments in file chase.c
 WINDOW* generate_window();

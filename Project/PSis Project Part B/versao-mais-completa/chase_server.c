@@ -3,6 +3,109 @@
 // Global variables
 client_list *head; 
 WINDOW *my_win;
+int server_sock;
+
+
+void* bots_thread(void* arg) {
+    srand(time(NULL));
+    int num_bots;
+    position_t init_pos;
+    int new_bot_err, rand_num;
+    client_list* aux;
+
+    num_bots = (rand() % (MAX_BOTS - MIN_BOTS + 1)) + MIN_BOTS;
+    aux = head;
+
+    for (int i = 0; i < num_bots; i++) {
+        // Initializes bots Assigns it's representation (1, 2, etc) and an empty board position. 
+        init_pos = initialize_bot_prizes(head, true);
+
+        // Adds the bots into the list of clients
+        new_bot_err = insert_new_client(head, init_pos.c, init_pos.x, init_pos.y, init_pos.health, -1); // sock_fd doesn't have a meaning for the prizes
+
+        if (new_bot_err != -1){       
+            // draws in the board            
+            draw_player(my_win, &init_pos, true);
+            // increments the number of elements
+            num_elements++;
+        }
+        else{
+            i--;
+            //close(server_sock);
+            //exit(-1);
+        }
+    }
+
+    field_st2all(head);
+
+    while(1) {
+        sleep(TIME_UPDATE_BOTS);
+
+        for (int i = 0; i < num_bots; i++) {
+            rand_num = (rand() % 4) + 1; // random number between 1 and 4
+            aux = update_bot(head, aux, rand_num, my_win);
+        }
+
+        aux = head;
+    }
+
+}
+
+void* prizes_thread(void* arg){
+    num_prizes = 0;
+    position_t init_pos;
+    int new_prize_err;
+
+    for (int i = 0; i < INIT_PRIZES; i++){
+
+        // Initializes prize(s) Assigns it's representation (1, 2, etc) and an empty board position. 
+        init_pos = initialize_bot_prizes(head, false);
+
+        // Adds the Prizes(s) into the list of clients
+        new_prize_err = insert_new_client(head, init_pos.c, init_pos.x, init_pos.y, init_pos.health, -1); // sock_fd doesn't have a meaning for the prizes
+
+        if (new_prize_err != -1){       
+            // draws in the board            
+            draw_player(my_win, &init_pos, true);
+            // increments the number of prizes and elements
+            num_prizes++;
+            num_elements++;
+        }
+        else{
+            i--;
+            //close(server_sock);
+            //exit(-1);
+        }
+    }
+
+    field_st2all(head);
+
+    while(1) {
+        
+        sleep(TIME_GENERATE_PRIZE);
+
+        if(num_prizes < MAX_PRIZES) {
+            // Initialize prize; assigns it's representation (1, 2, etc) and an empty board position. 
+            init_pos = initialize_bot_prizes(head, false);
+
+            // Adds the Prizes into the list of clients
+            new_prize_err = insert_new_client(head, init_pos.c, init_pos.x, init_pos.y, init_pos.health, -1); // sock_fd doesn't have a meaning for the prizes
+
+            if (new_prize_err != -1){       
+                // draws in the board            
+                draw_player(my_win, &init_pos, true);
+                // increments the number of prizes
+                num_prizes++;
+                num_elements++;
+
+                field_st2all(head);
+            }
+        }
+
+    }
+
+    
+}
 
 void* client_thread(void* arg){
 
@@ -57,7 +160,7 @@ void* client_thread(void* arg){
 
 int main(int argc, char *argv[])
 {
-    int server_sock, sock_fd;
+    int sock_fd;
     server_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (server_sock == -1){
 		perror("socket: ");
@@ -87,7 +190,7 @@ int main(int argc, char *argv[])
 
     // Variables declaration and initialization
     // Local variables
-    pthread_t thread_id;
+    pthread_t thread_id, thread_id_prizes, thread_id_bots;
     message_t in_msg, out_msg;
     int nbytes, flag_thread;
     position_t init_pos;
@@ -98,7 +201,11 @@ int main(int argc, char *argv[])
     head = create_head_client_list(); // Creates the linked list where all board info is stored; players, bots, prizes
     my_win = generate_window();
 
-    // CREATE HERE BOT AND PRIZES THREADS!!!!!!!!!!!!!!!!!!!!
+    // Create bots and prizes threads
+    pthread_create(&thread_id_prizes, NULL, prizes_thread, NULL);
+    sleep(1);
+    pthread_create(&thread_id_bots, NULL, bots_thread, NULL);
+
 
     while(1){
         sock_fd = accept(server_sock, (struct sockaddr *) &client_address, &client_addr_size);
@@ -143,8 +250,8 @@ int main(int argc, char *argv[])
                 send(sock_fd, &out_msg, sizeof(message_t), 0);
                 
                 if(flag_thread == 1) {
-                    // // Updates the field for every player
-                    // field_st2all (head);
+                    // Updates the field for every player
+                    field_st2all (head);
                     pthread_create(&thread_id, NULL, client_thread,(void*)&sock_fd);
                 }
                 else {
