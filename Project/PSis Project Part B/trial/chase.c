@@ -20,9 +20,9 @@ client_list* create_head_client_list(){
     return head;
 }
 
-int insert_new_client(client_list* head, int pid, char c, int x, int y, int health){
+int insert_new_client(client_list* head, char c, int x, int y, int health, int socket_id){
 // Function that inserts a new player/bot/prize into the list of clients
-// Inputs: pointer to the head node, client PID, element character, element position x,y, element health
+// Inputs: pointer to the head node, element character, element position x,y, element health
 // Outputs: 1 if successfully inserted, -1 if error
 
     client_list* new_block = NULL;
@@ -37,11 +37,11 @@ int insert_new_client(client_list* head, int pid, char c, int x, int y, int heal
     client_list* last = head->next; // last points to the start of the list
 
     // insert information in the new block of the list
-    new_block->pid = pid;
     new_block->c = c;
     new_block->x = x;
     new_block->y = y;
     new_block->health = health;
+    new_block->socket_id = socket_id;
 
     new_block->next = NULL; // new block is the last one in the list, points to NULL
   
@@ -59,9 +59,9 @@ int insert_new_client(client_list* head, int pid, char c, int x, int y, int heal
     return 1;
 }
 
-int delete_client(client_list* head, int pid, WINDOW* win){
+int delete_client(client_list* head, int socket_id, WINDOW* win){
 // Function that deletes a player from the list of clients and the screen
-// Inputs: pointer to the head of the list, player PID, window
+// Inputs: pointer to the head of the list, socket_id, window
 // Outputs: 1 if successfully deleted, -1 if it was not in the list
 
     client_list *temp = head->next, *prev; // stores head of the list
@@ -69,22 +69,23 @@ int delete_client(client_list* head, int pid, WINDOW* win){
     position_t delete_pos; // information to be deleted
  
     // If head node itself holds the key to be deleted
-    if (temp != NULL && temp->pid == pid) {
+    if (temp != NULL && temp->socket_id == socket_id) {
         head->next = temp->next; // Changed head
         delete_pos.c = temp->c;
         delete_pos.x = temp->x;
         delete_pos.y = temp->y;
+        close(temp->socket_id);
 
         // delete player and its health from the window
         draw_player(win, &delete_pos, false);
-        draw_health(&delete_pos, 2, false);
+        draw_health(&delete_pos, 1, false);
 
         free(temp); // free old head
         return 1;   
     }
  
     // Search for the key to be deleted, keep track of the previous node as we need to change 'prev->next'
-    while (temp != NULL && temp->pid != pid) {
+    while (temp != NULL && temp->socket_id != socket_id) {
         prev = temp;
         temp = temp->next;
     }
@@ -99,27 +100,14 @@ int delete_client(client_list* head, int pid, WINDOW* win){
     delete_pos.c = temp->c;
     delete_pos.x = temp->x;
     delete_pos.y = temp->y;
+    close(temp->socket_id);
 
     // delete player and its health from the window 
     draw_player(win, &delete_pos, false);
-    draw_health(&delete_pos, 2, false);
+    draw_health(&delete_pos, 1, false);
 
     free(temp); // Free memory
     return 1;   //returns 1 if key was present and deleted
-}
-
-void print_client_list(client_list* node){
-// Function that prints the list (used for debug)
-// Inputs: pointer to the node
-// Outputs: --
-
-    node = node->next;
-
-    // Print information and move forward
-    while (node != NULL){
-       printf("PID: %d\n Letter: %c\n Pos_x: %d\n Pos_y: %d\n Health: %d\n", node->pid, node->c, node->x ,node->y, node->health);
-       node = node->next;
-    }
 }
 
 client_list* search_position(client_list* head, int x, int y){
@@ -154,16 +142,16 @@ int search_letter(client_list* head, char c){
     return 0; //returns 0 if not found
 }
 
-client_list* search_client(client_list* head, int pid){
+client_list* search_client(client_list* head, int socket_id){
 // Function that searchs a client in the list
-// Inputs: pointer to the head node, client PID
+// Inputs: pointer to the head node, client socket_id
 // Outputs: node found (NULL if not found)
 
     client_list* temp;
 
-    // Search in the list for the desired client, using its PID
+    // Search in the list for the desired client, using its socket_id
     for (temp = head->next; temp != NULL; temp = temp->next){
-        if (temp->pid == pid){
+        if (temp->socket_id == socket_id){
             return temp; // returns the node found 
         }
     }
@@ -217,40 +205,37 @@ int delete_prizes(client_list* head, client_list* prize, WINDOW* win){
 int health_0(client_list* head, client_list* player, WINDOW* win) {
 // Function that checks if the health of a player reached 0 and deletes it if so
 // Inputs: pointer to the head node, pointer to the player, window
-// Outputs: 1 if its health reached 0 and it was deleted, 0 if not
+// Outputs: 1 if its health reached 0, 0 if not
 
-    int delete_client_err;
+    message_t out_msg;
+    position_t new_play; 
 
     // In case player's health reached 0
     if (player->health == 0) {
-        delete_client_err = delete_client(head, player->pid, win); // deletes it from the list and the screen
         
-        // In case it was not in the list
-        if (delete_client_err == -1) {
-            printf("This client was not yet connected.\n");
-            return 0;
-            }
-        // In case it was succefully deleted
-        else {
-            num_players --; // decrease total number of players 
-            return 1;
-        }
+        new_play.c = player->c;
+        new_play.health = player->health;
+
+        draw_health(&new_play, 0, false);
+        out_msg = msg2send(health0, UNUSED_CHAR, -1, -1, -1, -1); 
+        send(player->socket_id, &out_msg, sizeof(message_t), 0);
+        return 1;
     }
     else 
         return 0;
 }
 
-int update_client(client_list *head, int pid, int direction, WINDOW *win){
+int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
 // Function that updates players in the list and on the screen
-// Inputs: pointer to the head node, client PID, direction to move, window
+// Inputs: pointer to the head node, client socket_id, direction to move, window
 // Outputs: 0 if player and list updated, -1 if player not found
 
     client_list *player;
     client_list *other_player;
     position_t new_play, old_play;
 
-    // Search player in the list by its PID
-    player = search_client(head, pid); 
+    // Search player in the list by its socket_id
+    player = search_client(head, socket_id); 
     // If not found return -1
     if (player == NULL)
         return -1;
@@ -296,23 +281,29 @@ int update_client(client_list *head, int pid, int direction, WINDOW *win){
         draw_player(win, &old_play, false);
         // Moves the player to the new position and draws it
         move_client(player, win, x, y);
+        // Updates the field for every player
+        field_st2all (head);
     }
     // If the new position is occupied
     else{ 
 
         // If the other is a player (position does not change)
-        if (isalpha(other_player->c) != 0){
+        if (isalpha(other_player->c) != 0 && other_player->health > 0){
             
+
             // Increments moving player health and updates on the screen
             if (player->health < INITIAL_HEALTH){
                 player->health++;
                 new_play.c = player->c;
                 new_play.health = player->health;
-                draw_health(&new_play, 1, false);
+                draw_health(&new_play, 0, false);
             }
 
             // Decrements other player health and checks if reached 0
             other_player->health--;
+            // Updates the field for every player
+            field_st2all (head);
+
             is_health0 = health_0(head, other_player, win) ;
             if (is_health0) {
                 return 0;
@@ -321,8 +312,8 @@ int update_client(client_list *head, int pid, int direction, WINDOW *win){
             // Updates other player's health on the screen
             new_play.c = other_player->c;
             new_play.health = other_player->health;
-            draw_health(&new_play, 1, false);
-
+            draw_health(&new_play, 0, false);
+            
             
         }
         // If the other is a prize
@@ -342,18 +333,22 @@ int update_client(client_list *head, int pid, int direction, WINDOW *win){
 
                 new_play.c = player->c;
                 new_play.health = player->health;
-                draw_health(&new_play, 1, false);
+                draw_health(&new_play, 0, false);
             }
             // Delete "eaten" prize and decrement number of prizes in the field
             err = delete_prizes(head, other_player, win);
             num_prizes --;
+            num_elements --;
             if (err != -1) {
-                // Updates the field
+                // Updates the server field
                 draw_player(win, &old_play, false);
                 move_client(player, win, x, y);
+
+                // Updates the field for every player
+                field_st2all (head);
             }   
         }
-        // If the other is a bot, nothing happens (posiiton does not change)
+        // If the other is a bot, nothing happens (position does not change)
     }
 
     return 0;
@@ -417,14 +412,17 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
                 draw_player(win, &old_play, false);
                 // Move the player to the new position and draw it
                 move_client(temp, win, x, y);
+                field_st2all(head);
             }
             // If the new position is occupied
             else{ 
                 // Occupied by a player
-                if (isalpha(other_client->c) != 0){
+                if (isalpha(other_client->c) != 0 && other_client->health > 0){
 
+                    
                     // Decrements that player's health
                     other_client->health--;
+                    field_st2all(head);
                     int is_health0 = health_0(head, other_client, win);
                     if (is_health0) {
                         return temp;
@@ -432,7 +430,7 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
 
                     new_play.c = other_client->c;
                     new_play.health = other_client->health;
-                    draw_health(&new_play, 1, false);
+                    draw_health(&new_play, 0, false);
                 }
                 // If the other is a bot or prize, nothing happens
             }   
@@ -441,6 +439,7 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
     }
     return NULL;
 }
+
 
 
 // Functions to send message of type field_status 
@@ -466,7 +465,7 @@ char* field2msg(client_list* head){
 
     for(client_list* temp = head->next; temp != NULL; temp = temp->next) {
         
-        sprintf(msg,"%s","n"); // adds a flag
+        sprintf(msg,"%s","n"); // adds a flag to separate players
         strcat(msg,delim);
         strcat(msg_result,msg);
         sprintf(msg,"%d",temp->x); // adds position x
@@ -528,13 +527,12 @@ position_t* decode_msg_field(int len, char str[BUFFER_SIZE], WINDOW* win){
     }
 
     // For all elements in the string
-    for(int i=0; i<len;i++){
+    for(int i=0; i<len; i++){
 
         // Decodes the string
         if (i==0){
             strtok(str, delim);
-        }
-        else{       
+        }else{       
             strtok(NULL, delim);
         }
 
@@ -553,7 +551,7 @@ position_t* decode_msg_field(int len, char str[BUFFER_SIZE], WINDOW* win){
         // Updates the field
         draw_player(win, &field[i], true);
         if(field[i].health != -1){
-            draw_health(&field[i], 1, false); 
+            draw_health(&field[i], 0, false); 
         }
 
     }
@@ -564,18 +562,41 @@ position_t* decode_msg_field(int len, char str[BUFFER_SIZE], WINDOW* win){
 
 }
 
+void field_st2all (client_list* head) {
+    message_t out_msg;
+    message_ballmov_t out_msg_ballmov;
+    client_list* temp;
+    char *msg_aux;
+    char msg[BUFFER_SIZE];
+    out_msg = msg2send(field_stat, UNUSED_CHAR, -1, -1, -1, -1);
+
+    //encodes the field status in an unique string
+    msg_aux = field2msg(head);
+    strcpy(msg, msg_aux);
+
+    //and sends it to the player for him to update it's own board.
+    out_msg_ballmov = msg2send_ballmov(field_stat, num_elements, msg);
+    free(msg_aux);
+
+    for (temp = head->next; temp != NULL; temp = temp->next) {
+        if (temp->socket_id != -1) {
+            send(temp->socket_id, &out_msg, sizeof(message_t), 0);
+            send(temp->socket_id, &out_msg_ballmov, sizeof(message_ballmov_t), 0);
+        }
+    }
+    
+}
 
 // Functions for communications (initialize and messages)
 
-message_t msg2send(msg_type type, int pid, char c, int x, int y, long int direction, int health) {
+message_t msg2send(msg_type type, char c, int x, int y, int direction, int health) {
 // Function that fills in info in the message struct
-// Inputs: message type, client PID, client char, client position x,y, direction to move, client health
+// Inputs: message type, client char, client position x,y, direction to move, client health
 // Outputs: message to be sent
 
     message_t out_msg;
 
     out_msg.type = type;
-    out_msg.pid = pid;
     out_msg.c = c;
     out_msg.x = x;
     out_msg.y = y;
@@ -604,7 +625,7 @@ position_t initialize_player(client_list* head) {
 // Inputs: pointer to head node
 // Outputs: information to be printed (position x,y, character, health)
 
-    srand(time(0)); // initialize random number generators
+    srand(time(NULL)); // initialize random number generators
 
     position_t init_pos; // initial position
     char c = 64; // '@' in ASCII, 65 = 'A'
@@ -644,7 +665,7 @@ position_t initialize_bot_prizes(client_list *head, int bot){
 // Inputs: pointer to head node, flag bot
 // Outputs: information to be printed (position x,y, character, health)
 
-    srand(time(0));
+    srand(time(NULL));
     position_t init_pos;
 
     // Generate a random position and search in the list if that position is occupied
@@ -714,7 +735,7 @@ void draw_health(position_t * player, int to_do, int conn_client) {
 // Inputs: information to be printed, flag to-do, flag connected client
 // Outputs: --
 
-    // to_do : 0 - iniciar msg box health, 1 - editar player health, 2 - eliminar player health
+    // to_do : 1 - editar player health, 2 - eliminar player health
     int aux = 1;
     int c = 65; // 'A' in ASCII
  
@@ -733,25 +754,22 @@ void draw_health(position_t * player, int to_do, int conn_client) {
         }
         switch (to_do)
         {
-        // Initialize message window
-        case 0: 
-            for(int i=1; i<=MAX_PLAYERS; i++) {
-                mvwprintw(message_win, i,2,"-----");
-            }
-            wrefresh(message_win);
-            break;
-
         // Edit player's health
-        case 1:
+        case 0:
             mvwprintw(message_win, aux,2,"%c:             ", player->c);
-            mvwprintw(message_win, aux,2,"%c: %d", player->c, player->health);
+            if (player->health >= 0) {
+                mvwprintw(message_win, aux,2,"%c: %d", player->c, player->health);
+            }
+            else {
+                mvwprintw(message_win, aux,2,"%c: %d", player->c, 0);
+            }
             wrefresh(message_win);
             break;
         
         // Deletes player's health, cleans the message window
-        case 2:
-            mvwprintw(message_win, aux,2,"            ");
-            mvwprintw(message_win, aux,2,"-----");
+        case 1:
+            mvwprintw(message_win, aux,2,"     ");
+            // mvwprintw(message_win, aux,2,"-----");
             wrefresh(message_win);
             break;
         
@@ -780,4 +798,14 @@ void move_client (client_list* client, WINDOW* win, int x, int y){
 
     // Draws the new position
     draw_player(win, &new_play, true);
+}
+
+
+// Handler functions
+
+void sig_handler(int signum){
+  printf("Key ENTER not pressed\n");
+  free(field);
+  close(client_sock);
+  exit(-1);
 }

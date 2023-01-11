@@ -217,7 +217,7 @@ int health_0(client_list* head, client_list* player, WINDOW* win) {
         new_play.health = player->health;
 
         draw_health(&new_play, 0, false);
-        out_msg = msg2send(health0, UNUSED_CHAR, -1, -1, -1, -1);
+        out_msg = msg2send(health0, UNUSED_CHAR, -1, -1, -1, -1); 
         send(player->socket_id, &out_msg, sizeof(message_t), 0);
         return 1;
     }
@@ -293,11 +293,11 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
 
             // Increments moving player health and updates on the screen
             if (player->health < INITIAL_HEALTH){
-                    player->health++;
-                    new_play.c = player->c;
-                    new_play.health = player->health;
-                    draw_health(&new_play, 0, false);
-                }
+                player->health++;
+                new_play.c = player->c;
+                new_play.health = player->health;
+                draw_health(&new_play, 0, false);
+            }
 
             // Decrements other player health and checks if reached 0
             other_player->health--;
@@ -305,9 +305,9 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
             field_st2all (head);
 
             is_health0 = health_0(head, other_player, win) ;
-                if (is_health0) {
-                     return 0;
-                    }
+            if (is_health0) {
+                return 0;
+            }
 
             // Updates other player's health on the screen
             new_play.c = other_player->c;

@@ -40,7 +40,7 @@
 
 
 
-#define MAX_PLAYERS 10 // !!!!!!!!!!! TIRAR DEPOIS!!!!!!
+#define MAX_PLAYERS 11 // !!!!!!!!!!! TIRAR DEPOIS!!!!!!
 
 // Messages types
 typedef enum msg_type{
