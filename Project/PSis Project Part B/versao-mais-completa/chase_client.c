@@ -20,44 +20,44 @@ void* rcv_thread(void* arg) {
         }
 
         switch (in_msg.type) {
-        case health0:
-            aux_health0 = 1;
-            alarm(TIME_OUT);
-            
-            while(1){
-                if(aux_health0 == 0){
-                    alarm(0); //Cancel previous alarm
+            case health0:
+                aux_health0 = 1;
+                alarm(TIME_OUT);
+                
+                while(1){
+                    if(aux_health0 == 0){
+                        alarm(0); //Cancel previous alarm
 
-                    // Sends a continue_game message
-                    out_msg = msg2send(continue_game, UNUSED_CHAR, -1, -1, -1, -1);
-                    send(client_sock, &out_msg, sizeof(message_t), 0); 
+                        // Sends a continue_game message
+                        out_msg = msg2send(continue_game, UNUSED_CHAR, -1, -1, -1, -1);
+                        send(client_sock, &out_msg, sizeof(message_t), 0); 
+                        break;
+                    }
+                }       
+                break;
+            
+            case field_stat:
+                nbytes = recv(sock_fd, &in_msg_ballmov, sizeof(in_msg_ballmov), 0);
+                if(nbytes != sizeof(message_ballmov_t) || in_msg_ballmov.type != field_stat){
                     break;
                 }
-            }       
-            break;
-        
-        case field_stat:
-            nbytes = recv(sock_fd, &in_msg_ballmov, sizeof(in_msg_ballmov), 0);
-            if(nbytes != sizeof(message_ballmov_t) || in_msg_ballmov.type != field_stat){
-                break;
-            }
 
-            //stores the field info encoded by a string
-            strcpy(msg_client, in_msg_ballmov.str);
-            //string decode process
-            for (int j = 0; j < len; j++){
-                // Deletes the previous positions
-                draw_player(my_win, &field[j], false);
-                if (field[j].health != -1){
-                    // Deletes the previous health
-                    draw_health(&field[j], 1, false);
+                //stores the field info encoded by a string
+                strcpy(msg_client, in_msg_ballmov.str);
+                //string decode process
+                for (int j = 0; j < len; j++){
+                    // Deletes the previous positions
+                    draw_player(my_win, &field[j], false);
+                    if (field[j].health != -1){
+                        // Deletes the previous health
+                        draw_health(&field[j], 1, false);
+                    }
                 }
-            }
-            len = in_msg_ballmov.num_elem;
-            field = decode_msg_field(len, msg_client, my_win);
-            break;
-        default:
-            break;
+                len = in_msg_ballmov.num_elem;
+                field = decode_msg_field(len, msg_client, my_win);
+                break;
+            default:
+                break;
         }
     }
     
@@ -68,7 +68,7 @@ void* rcv_thread(void* arg) {
 
 int main(int argc, char *argv[]){
 
-    // Client receives the server adress as command line argument
+    // Client receives the server adress and PORT as command line argument
     if (argc != 3){
         printf("Error: Missing server adress or port.\n");
         exit(1);

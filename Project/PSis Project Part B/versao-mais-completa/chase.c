@@ -527,13 +527,12 @@ position_t* decode_msg_field(int len, char str[BUFFER_SIZE], WINDOW* win){
     }
 
     // For all elements in the string
-    for(int i=0; i<len;i++){
+    for(int i=0; i<len; i++){
 
         // Decodes the string
         if (i==0){
             strtok(str, delim);
-        }
-        else{       
+        }else{       
             strtok(NULL, delim);
         }
 

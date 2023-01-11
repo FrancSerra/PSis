@@ -17,11 +17,11 @@ void* bots_thread(void* arg) {
     aux = head;
 
     for (int i = 0; i < num_bots; i++) {
-        // Initializes bots Assigns it's representation (1, 2, etc) and an empty board position. 
+        // Initializes bots Assigns it's representation (*) and an empty board position. 
         init_pos = initialize_bot_prizes(head, true);
 
         // Adds the bots into the list of clients
-        new_bot_err = insert_new_client(head, init_pos.c, init_pos.x, init_pos.y, init_pos.health, -1); // sock_fd doesn't have a meaning for the prizes
+        new_bot_err = insert_new_client(head, init_pos.c, init_pos.x, init_pos.y, init_pos.health, -1);
 
         if (new_bot_err != -1){       
             // draws in the board            
@@ -30,7 +30,7 @@ void* bots_thread(void* arg) {
             num_elements++;
         }
         else{
-            i--;
+            i--; // repeats this iteration if list insertion fails
             //close(server_sock);
             //exit(-1);
         }
@@ -48,7 +48,6 @@ void* bots_thread(void* arg) {
 
         aux = head;
     }
-
 }
 
 void* prizes_thread(void* arg){
@@ -103,8 +102,6 @@ void* prizes_thread(void* arg){
         }
 
     }
-
-    
 }
 
 void* client_thread(void* arg){
@@ -147,8 +144,7 @@ void* client_thread(void* arg){
     delete_client_err = delete_client(head, sock_fd, my_win);
     if (delete_client_err == -1){
         printf("Error disconnecting client.\n");
-    }
-    else{
+    }else{
         //decreases number of players
         num_elements--;
     }
@@ -158,8 +154,9 @@ void* client_thread(void* arg){
     pthread_exit(NULL);
 }
 
-int main(int argc, char *argv[])
-{
+
+
+int main(int argc, char *argv[]){
     int sock_fd;
     server_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (server_sock == -1){
@@ -211,8 +208,8 @@ int main(int argc, char *argv[])
         sock_fd = accept(server_sock, (struct sockaddr *) &client_address, &client_addr_size);
         if(sock_fd< 0){
             printf("Error while accepting connection to server.\n");
-        }
-        else {
+            
+        }else{
             nbytes = recv(sock_fd, &in_msg, sizeof(in_msg), 0);
             if(nbytes == sizeof(message_t) && in_msg.type == conn){
 
@@ -235,13 +232,12 @@ int main(int argc, char *argv[])
                         out_msg = msg2send(ball_info, init_pos.c, init_pos.x, init_pos.y, -1, INITIAL_HEALTH);
                         flag_thread = 1;
 
-                    }
-                    else{  //case error allocating memory
+                    }else{  //case error allocating memory
                         out_msg = msg2send(error, UNUSED_CHAR, -1, -1, -1, -1);
                         flag_thread = 0;
                     }
-                }
-                else{ //case exceed number of elements
+
+                }else{ //case exceed number of elements
                     //sends an error message to the player
                     out_msg = msg2send(error, UNUSED_CHAR, -1, -1, -1, -1);
                     flag_thread = 0;
@@ -253,16 +249,15 @@ int main(int argc, char *argv[])
                     // Updates the field for every player
                     field_st2all (head);
                     pthread_create(&thread_id, NULL, client_thread,(void*)&sock_fd);
-                }
-                else {
+
+                }else{
                     close(sock_fd);
                 }
-            }
-            else{
+
+            }else{
                 perror("Error");
                 close(sock_fd);
             }
         }
-
     }
 }
