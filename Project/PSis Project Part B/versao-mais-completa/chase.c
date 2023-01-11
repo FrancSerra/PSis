@@ -1,5 +1,14 @@
 #include "chase.h"
 
+// Create mutex and rwlocks
+static pthread_rwlock_t rwlock_list = PTHREAD_RWLOCK_INITIALIZER; // rwlock to access the list
+static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER; // mutex to access num_elements and num_prizes
+
+pthread_rwlock_t* ptr_rwlock_list = &rwlock_list;
+pthread_mutex_t* ptr_mtx = &mtx;
+
+
+
 // Functions for lists and updates
 
 client_list* create_head_client_list(){
@@ -55,7 +64,6 @@ int insert_new_client(client_list* head, char c, int x, int y, int health, int s
     }
 
     last->next = new_block; // insert the new block at the end of the list
-
     return 1;
 }
 
@@ -63,7 +71,7 @@ int delete_client(client_list* head, int socket_id, WINDOW* win){
 // Function that deletes a player from the list of clients and the screen
 // Inputs: pointer to the head of the list, socket_id, window
 // Outputs: 1 if successfully deleted, -1 if it was not in the list
-
+    
     client_list *temp = head->next, *prev; // stores head of the list
 
     position_t delete_pos; // information to be deleted
@@ -217,7 +225,7 @@ int health_0(client_list* head, client_list* player, WINDOW* win) {
         new_play.health = player->health;
 
         draw_health(&new_play, 0, false);
-        out_msg = msg2send(health0, UNUSED_CHAR, -1, -1, -1, -1); 
+        out_msg = msg2send(health0, UNUSED_CHAR, -1, -1, -1, -1);
         send(player->socket_id, &out_msg, sizeof(message_t), 0);
         return 1;
     }
@@ -234,11 +242,14 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
     client_list *other_player;
     position_t new_play, old_play;
 
+    pthread_rwlock_rdlock(&rwlock_list);
     // Search player in the list by its socket_id
     player = search_client(head, socket_id); 
     // If not found return -1
-    if (player == NULL)
+    if (player == NULL) {
+        pthread_rwlock_unlock(&rwlock_list);
         return -1;
+    }
 
     int x, y, err, is_health0;  // aux variables
     x = player->x;              // player position: x
@@ -248,6 +259,7 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
     old_play.c = player->c;
     old_play.x = player->x;
     old_play.y = player->y;
+    pthread_rwlock_unlock(&rwlock_list);
 
     // Computes where it will land following the given direction
     if (direction == KEY_UP){
@@ -271,11 +283,13 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
         }
     }
 
+    pthread_rwlock_rdlock(&rwlock_list);
     // Checks who is in that landing place
     other_player = search_position(head, x, y);
 
     // If the new position is empty or if it is its current position
     if (other_player == NULL || other_player == player){ 
+        pthread_rwlock_unlock(&rwlock_list);
 
         // Cleans the older position
         draw_player(win, &old_play, false);
@@ -286,39 +300,47 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
     }
     // If the new position is occupied
     else{ 
-
         // If the other is a player (position does not change)
         if (isalpha(other_player->c) != 0 && other_player->health > 0){
-            
+            pthread_rwlock_unlock(&rwlock_list);
 
+            pthread_rwlock_wrlock(&rwlock_list);
             // Increments moving player health and updates on the screen
             if (player->health < INITIAL_HEALTH){
-                player->health++;
-                new_play.c = player->c;
-                new_play.health = player->health;
-                draw_health(&new_play, 0, false);
-            }
+                    player->health++;
+                    new_play.c = player->c;
+                    new_play.health = player->health;
+                    draw_health(&new_play, 0, false);
+                }
 
             // Decrements other player health and checks if reached 0
             other_player->health--;
+            pthread_rwlock_unlock(&rwlock_list);
+
             // Updates the field for every player
             field_st2all (head);
 
+            pthread_rwlock_rdlock(&rwlock_list);
             is_health0 = health_0(head, other_player, win) ;
-            if (is_health0) {
-                return 0;
-            }
+                if (is_health0) {
+                    pthread_rwlock_unlock(&rwlock_list);
+                    return 0;
+                    }
 
             // Updates other player's health on the screen
             new_play.c = other_player->c;
             new_play.health = other_player->health;
+            pthread_rwlock_unlock(&rwlock_list);
+
             draw_health(&new_play, 0, false);
             
             
         }
         // If the other is a prize
         else if (isdigit(other_player->c)){ 
+            pthread_rwlock_unlock(&rwlock_list);
 
+            pthread_rwlock_wrlock(&rwlock_list);
             // Sums the prize to player's health
             if (player->health < INITIAL_HEALTH){
 
@@ -337,8 +359,13 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
             }
             // Delete "eaten" prize and decrement number of prizes in the field
             err = delete_prizes(head, other_player, win);
+            pthread_rwlock_unlock(&rwlock_list);
+
+            pthread_mutex_lock(&mtx);
             num_prizes --;
             num_elements --;
+            pthread_mutex_unlock(&mtx);
+            
             if (err != -1) {
                 // Updates the server field
                 draw_player(win, &old_play, false);
@@ -348,7 +375,10 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
                 field_st2all (head);
             }   
         }
+        else{
+        pthread_rwlock_unlock(&rwlock_list);
         // If the other is a bot, nothing happens (position does not change)
+        }
     }
 
     return 0;
@@ -363,9 +393,9 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
     client_list *other_client;
     position_t new_play, old_play;
 
+    pthread_rwlock_rdlock(&rwlock_list);
     // Search in the list
-    for (client_list* temp = aux->next; temp != NULL; temp = temp->next)
-    {   
+    for (client_list* temp = aux->next; temp != NULL; temp = temp->next){   
         // If it is a bot
         if (temp->c == BOT_CHAR){
 
@@ -376,6 +406,8 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
             old_play.c = temp->c;
             old_play.x = temp->x;
             old_play.y = temp->y;
+
+            pthread_rwlock_unlock(&rwlock_list);
 
             // Moves up           
             if (mod == 1){
@@ -402,12 +434,13 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
                 }
             }
 
+            pthread_rwlock_rdlock(&rwlock_list);
             // Checks who is in that landing place (new position)
             other_client = search_position(head, x, y);
 
             // If the new position is empty or if it is its current position
             if (other_client == NULL || other_client == temp){ 
-
+                pthread_rwlock_unlock(&rwlock_list);
                 // Clean the older position
                 draw_player(win, &old_play, false);
                 // Move the player to the new position and draw it
@@ -418,25 +451,38 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
             else{ 
                 // Occupied by a player
                 if (isalpha(other_client->c) != 0 && other_client->health > 0){
-
-                    
+                    pthread_rwlock_unlock(&rwlock_list);
+                    pthread_rwlock_wrlock(&rwlock_list);
                     // Decrements that player's health
                     other_client->health--;
+                    pthread_rwlock_unlock(&rwlock_list);
                     field_st2all(head);
+
+                    pthread_rwlock_rdlock(&rwlock_list);
                     int is_health0 = health_0(head, other_client, win);
                     if (is_health0) {
+                        pthread_rwlock_unlock(&rwlock_list);
                         return temp;
                     }
 
                     new_play.c = other_client->c;
                     new_play.health = other_client->health;
+                    pthread_rwlock_unlock(&rwlock_list);
                     draw_health(&new_play, 0, false);
                 }
-                // If the other is a bot or prize, nothing happens
+                else{
+                    pthread_rwlock_unlock(&rwlock_list);
+                    // If the other is a bot or prize, nothing happens
+                }
             }   
             return temp; 
+        } 
+        else {
+            pthread_rwlock_unlock(&rwlock_list);
         }
+        pthread_rwlock_rdlock(&rwlock_list);
     }
+    pthread_rwlock_unlock(&rwlock_list);
     return NULL;
 }
 
@@ -449,8 +495,8 @@ char* field2msg(client_list* head){
 // Inputs: pointer to the head node
 // Outputs: message string
 
-    char* msg_result = (char *) malloc(sizeof(char)*(BUFFER_SIZE)+1); 
-    char* msg = (char *) malloc(sizeof(char)*(BUFFER_SIZE)+1); 
+    char* msg_result = (char *) malloc(sizeof(char)*(ALOC_MAX)+1); 
+    char* msg = (char *) malloc(sizeof(char)*(ALOC_MAX)+1); 
 
     // Check success of memory allocation
     if(msg_result == NULL || msg == NULL){ 
@@ -463,6 +509,7 @@ char* field2msg(client_list* head){
     // Create the delimiter that will be sent inside the message
     delim = numToASCII(DELIM);    
 
+    pthread_rwlock_rdlock(&rwlock_list);
     for(client_list* temp = head->next; temp != NULL; temp = temp->next) {
         
         sprintf(msg,"%s","n"); // adds a flag to separate players
@@ -482,6 +529,7 @@ char* field2msg(client_list* head){
         strcat(msg_result,msg);
 
     }
+    pthread_rwlock_unlock(&rwlock_list);
 
     free(msg); // free allocated memory
     free(delim); // free allocated memory
@@ -494,7 +542,7 @@ char *numToASCII(int num) {
 // Inputs: ASCII code of the delimiter
 // Outputs: delimiter string
 
-    char *string =(char*) malloc(sizeof(char)*BUFFER_SIZE);
+    char *string =(char*) malloc(sizeof(char)*5 + 1);
 
     // Check success of memory allocation
     if (string == NULL){
@@ -507,7 +555,7 @@ char *numToASCII(int num) {
     return string;
 }
 
-position_t* decode_msg_field(int len, char str[BUFFER_SIZE], WINDOW* win){
+position_t* decode_msg_field(int len, char str[], WINDOW* win){
 // Function that decodes the message sent in the field_status reply
 // Inputs: number of elements in the client list, received string message, window
 // Outputs: array of structs position_t with all info about the elements in the field
@@ -527,12 +575,13 @@ position_t* decode_msg_field(int len, char str[BUFFER_SIZE], WINDOW* win){
     }
 
     // For all elements in the string
-    for(int i=0; i<len; i++){
+    for(int i=0; i<len;i++){
 
         // Decodes the string
         if (i==0){
             strtok(str, delim);
-        }else{       
+        }
+        else{       
             strtok(NULL, delim);
         }
 
@@ -567,23 +616,31 @@ void field_st2all (client_list* head) {
     message_ballmov_t out_msg_ballmov;
     client_list* temp;
     char *msg_aux;
-    char msg[BUFFER_SIZE];
+    char msg[ALOC_MAX];
+    int aux_elements;
     out_msg = msg2send(field_stat, UNUSED_CHAR, -1, -1, -1, -1);
 
     //encodes the field status in an unique string
     msg_aux = field2msg(head);
+
     strcpy(msg, msg_aux);
 
     //and sends it to the player for him to update it's own board.
-    out_msg_ballmov = msg2send_ballmov(field_stat, num_elements, msg);
+    pthread_mutex_lock(ptr_mtx);
+    aux_elements = num_elements;
+    pthread_mutex_unlock(ptr_mtx);
+
+    out_msg_ballmov = msg2send_ballmov(field_stat, aux_elements, msg);
     free(msg_aux);
 
+    pthread_rwlock_rdlock(&rwlock_list);
     for (temp = head->next; temp != NULL; temp = temp->next) {
         if (temp->socket_id != -1) {
             send(temp->socket_id, &out_msg, sizeof(message_t), 0);
             send(temp->socket_id, &out_msg_ballmov, sizeof(message_ballmov_t), 0);
         }
     }
+    pthread_rwlock_unlock(&rwlock_list);
     
 }
 
@@ -606,7 +663,7 @@ message_t msg2send(msg_type type, char c, int x, int y, int direction, int healt
     return out_msg;
 }
 
-message_ballmov_t msg2send_ballmov(msg_type type, int num_elem, char str[BUFFER_SIZE]) {
+message_ballmov_t msg2send_ballmov(msg_type type, int num_elem, char str[]) {
 // Function that fills in info in the message struct (in case of field_status type)
 // Inputs: message type, total number of elements in the list, string
 // Outputs: message to be sent
@@ -637,8 +694,9 @@ position_t initialize_player(client_list* head) {
     init_pos.x = (rand()% (WINDOW_SIZE-2 - 1 + 1)) + 1;
     init_pos.y = (rand()% (WINDOW_SIZE-2 - 1 + 1)) + 1;
 
+    pthread_rwlock_rdlock(&rwlock_list);
     search_pos = search_position(head, init_pos.x, init_pos.y); // search position in the list
-    
+
     while (search_pos != NULL || search_lett == 1){
         // If position found (occupied) generates new position and search again
         if (search_pos != NULL) {
@@ -653,6 +711,8 @@ position_t initialize_player(client_list* head) {
             search_lett = search_letter(head, c);
         }
     }
+
+    pthread_rwlock_unlock(&rwlock_list);
 
     // stores the letter and the INITIAL_HEALTH
     init_pos.c = c;
@@ -672,10 +732,13 @@ position_t initialize_bot_prizes(client_list *head, int bot){
     init_pos.x = (rand() % (WINDOW_SIZE - 2 - 1 + 1)) + 1;
     init_pos.y = (rand() % (WINDOW_SIZE - 2 - 1 + 1)) + 1;
 
+    pthread_rwlock_rdlock(&rwlock_list);
+
     while (search_position(head, init_pos.x, init_pos.y) != NULL){ 
         init_pos.x = (rand() % (WINDOW_SIZE - 2 - 1 + 1)) + 1;
         init_pos.y = (rand() % (WINDOW_SIZE - 2 - 1 + 1)) + 1;
     }
+    pthread_rwlock_unlock(&rwlock_list);
 
     // If its a bot, stores bot character
     if(bot) {
@@ -756,7 +819,7 @@ void draw_health(position_t * player, int to_do, int conn_client) {
         {
         // Edit player's health
         case 0:
-            mvwprintw(message_win, aux,2,"%c:             ", player->c);
+            mvwprintw(message_win, aux,2,"%c:   ", player->c);
             if (player->health >= 0) {
                 mvwprintw(message_win, aux,2,"%c: %d", player->c, player->health);
             }
@@ -786,15 +849,19 @@ void move_client (client_list* client, WINDOW* win, int x, int y){
 // Outputs: -- 
 
     position_t new_play;
-    
+
+    pthread_rwlock_wrlock(&rwlock_list);
     // Updates position
     client->x = x;
     client->y = y;
+    pthread_rwlock_unlock(&rwlock_list);
 
+    pthread_rwlock_rdlock(&rwlock_list);
     // We have to pass a struct
     new_play.c = client->c;
     new_play.x = client->x;
     new_play.y = client->y;
+    pthread_rwlock_unlock(&rwlock_list);
 
     // Draws the new position
     draw_player(win, &new_play, true);

@@ -17,7 +17,7 @@
 #include <stddef.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include<signal.h>
+#include <signal.h>
 
 //The port number should be between 4000 and 40000, and needs to be converted with the htons function.
 #define SOCK_PORT 5000
@@ -36,11 +36,9 @@
 #define MIN_VALUE_PRIZES 49 // 1 in ASCII
 #define BOT_CHAR 42 // * in ASCII
 #define DELIM 36 // $ in ASCII
-#define BUFFER_SIZE 1000
-
-
-
-#define MAX_PLAYERS 11 // !!!!!!!!!!! TIRAR DEPOIS!!!!!!
+#define BUFFER_SIZE 500
+#define ALOC_MAX (WINDOW_SIZE-2)*(WINDOW_SIZE-2)*10 // (sizeof("n")+1) + (sizeof(int)+1)*4 + (sizeof(delim)+1)*5 = (2+1) + (4+1)*4 + (8+1)*5 = 68 (aprox. 70)
+#define MAX_PLAYERS 10 // !!!!!!!!!!! TIRAR DEPOIS!!!!!!
 
 // Messages types
 typedef enum msg_type{
@@ -68,7 +66,7 @@ typedef struct position_t {
 typedef struct message_ballmov_t{
     msg_type type;          // message type
     int num_elem;           // total number of elements in the field (players, bots and prizes)
-    char str[BUFFER_SIZE];  // string to send fiel information
+    char str[ALOC_MAX];  // string to send field information
 } message_ballmov_t;
 
 // Struct list of clients
@@ -102,12 +100,12 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
 // Functions to send message of type field_status 
 char* field2msg(client_list* head);
 char *numToASCII(int num);
-position_t* decode_msg_field(int len, char str[BUFFER_SIZE], WINDOW* win);
+position_t* decode_msg_field(int len, char str[ALOC_MAX], WINDOW* win);
 void field_st2all (client_list* head);
 
 // Functions for communications (initialize and messages) -- comments in file chase.c
 message_t msg2send(msg_type type, char c, int x, int y, int direction, int health);
-message_ballmov_t msg2send_ballmov(msg_type type, int num_elem, char str[BUFFER_SIZE]);
+message_ballmov_t msg2send_ballmov(msg_type type, int num_elem, char str[ALOC_MAX]);
 position_t initialize_player(client_list* head);
 position_t initialize_bot_prizes(client_list *head, int bot);
 
