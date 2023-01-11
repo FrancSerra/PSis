@@ -5,7 +5,6 @@ client_list *head;
 WINDOW *my_win;
 int server_sock;
 
-
 extern pthread_mutex_t* ptr_mtx;
 extern pthread_rwlock_t* ptr_rwlock_list;
 
@@ -17,7 +16,7 @@ void* bots_thread(void* arg) {
     client_list* aux;
 
     num_bots = (rand() % (MAX_BOTS - MIN_BOTS + 1)) + MIN_BOTS;
-
+    
     for (int i = 0; i < num_bots; i++) {
         // Initializes bots Assigns it's representation (1, 2, etc) and an empty board position. 
         init_pos = initialize_bot_prizes(head, true);
@@ -25,23 +24,24 @@ void* bots_thread(void* arg) {
         pthread_rwlock_wrlock(ptr_rwlock_list);
         // Adds the bots into the list of clients
         new_bot_err = insert_new_client(head, init_pos.c, init_pos.x, init_pos.y, init_pos.health, -1); // sock_fd doesn't have a meaning for the prizes
-        pthread_rwlock_unlock(ptr_rwlock_list);
 
-        if (new_bot_err != -1){       
+        if (new_bot_err != -1){ 
             // draws in the board            
             draw_player(my_win, &init_pos, true);
+            pthread_rwlock_unlock(ptr_rwlock_list);
+
             // increments the number of elements
             pthread_mutex_lock(ptr_mtx);
             num_elements++;
             pthread_mutex_unlock(ptr_mtx);
         }
         else{
+            pthread_rwlock_unlock(ptr_rwlock_list);
             i--;
             //close(server_sock);
             //exit(-1);
         }
     }
-
     field_st2all(head);
 
     while(1) {
@@ -67,12 +67,16 @@ void* prizes_thread(void* arg){
         // Initializes prize(s) Assigns it's representation (1, 2, etc) and an empty board position. 
         init_pos = initialize_bot_prizes(head, false);
 
+        pthread_rwlock_wrlock(ptr_rwlock_list);
         // Adds the Prizes(s) into the list of clients
         new_prize_err = insert_new_client(head, init_pos.c, init_pos.x, init_pos.y, init_pos.health, -1); // sock_fd doesn't have a meaning for the prizes
 
-        if (new_prize_err != -1){       
+        if (new_prize_err != -1){ 
+
             // draws in the board            
             draw_player(my_win, &init_pos, true);
+            pthread_rwlock_unlock(ptr_rwlock_list);
+
             // increments the number of prizes and elements
             pthread_mutex_lock(ptr_mtx);
             num_prizes++;
@@ -80,6 +84,7 @@ void* prizes_thread(void* arg){
             pthread_mutex_unlock(ptr_mtx);
         }
         else{
+            pthread_rwlock_unlock(ptr_rwlock_list);
             i--;
             //close(server_sock);
             //exit(-1);
@@ -101,9 +106,13 @@ void* prizes_thread(void* arg){
             new_prize_err = insert_new_client(head, init_pos.c, init_pos.x, init_pos.y, init_pos.health, -1); // sock_fd doesn't have a meaning for the prizes
             pthread_rwlock_unlock(ptr_rwlock_list);
 
-            if (new_prize_err != -1){       
+            if (new_prize_err != -1){    
+                
+                pthread_rwlock_wrlock(ptr_rwlock_list);
                 // draws in the board            
                 draw_player(my_win, &init_pos, true);
+                pthread_rwlock_unlock(ptr_rwlock_list);
+
                 // increments the number of prizes
                 pthread_mutex_lock(ptr_mtx);
                 num_prizes++;
@@ -172,9 +181,13 @@ void* client_thread(void* arg){
     pthread_rwlock_unlock(ptr_rwlock_list);
 
     if (delete_client_err == -1){
-        printf("Error disconnecting client.\n");
+        mvwprintw(error_win, 1,1,"Error disconnecting client.\n");
+        wrefresh(error_win);
+
     }
     else{
+        mvwprintw(error_win, 1,1,"                             \n");
+        wrefresh(error_win);
         //decreases number of players
         pthread_mutex_lock(ptr_mtx);
         num_elements--;
@@ -233,16 +246,18 @@ int main(int argc, char *argv[])
 
     // Create bots and prizes threads
     pthread_create(&thread_id_prizes, NULL, prizes_thread, NULL);
-    sleep(1);
     pthread_create(&thread_id_bots, NULL, bots_thread, NULL);
 
 
     while(1){
         sock_fd = accept(server_sock, (struct sockaddr *) &client_address, &client_addr_size);
         if(sock_fd< 0){
-            printf("Error while accepting connection to server.\n");
+            mvwprintw(error_win, 1,1,"Error while accepting connection to server.\n");
+            wrefresh(error_win);
         }
         else {
+            mvwprintw(error_win, 1,1,"                                            \n");
+            wrefresh(error_win);
             nbytes = recv(sock_fd, &in_msg, sizeof(in_msg), 0);
             if(nbytes == sizeof(message_t) && in_msg.type == conn){
                 
@@ -265,8 +280,10 @@ int main(int argc, char *argv[])
                         num_elements++; 
                         pthread_mutex_unlock(ptr_mtx);
 
+                        pthread_rwlock_wrlock(ptr_rwlock_list);
                         // Draws the new player in the server board
                         draw_player(my_win, &init_pos, true);
+                        pthread_rwlock_unlock(ptr_rwlock_list);
                         draw_health(&init_pos, 0, false);
 
                         //sends a message to the player containing the assigned, position and character 

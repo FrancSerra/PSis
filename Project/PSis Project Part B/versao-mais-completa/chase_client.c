@@ -22,6 +22,8 @@ void* rcv_thread(void* arg) {
         switch (in_msg.type) {
         case health0:
             aux_health0 = 1;
+            mvwprintw(error_win, 1,1,"Your health reached 0. Press 'y' to continue playing.\n");
+            wrefresh(error_win);
             alarm(TIME_OUT);
             
             while(1){
@@ -61,6 +63,8 @@ void* rcv_thread(void* arg) {
         }
     }
     
+    mvwprintw(error_win, 1,1,"Communication error\n");
+    wrefresh(error_win);
     free(field);
     close(sock_fd);
     exit(-1);
@@ -91,7 +95,7 @@ int main(int argc, char *argv[]){
     int key = -1;
     pthread_t thread_id;
     aux_health0 = 0;
-    field = (position_t *)malloc(sizeof(position_t) * (MAX_PLAYERS + MAX_BOTS + MAX_PRIZES) + 1);
+    field = (position_t *)malloc(sizeof(position_t)*ALOC_MAX);
     len = 0;
 
     // If the provided address is invalid, exit.
@@ -161,6 +165,8 @@ int main(int argc, char *argv[]){
 
         if (aux_health0 == 1 && (key == 'Y' || key == 'y')){
             aux_health0 = 0;
+            mvwprintw(error_win, 1,1,"                                                           ");
+            wrefresh(error_win);
         }
 
 
@@ -170,7 +176,9 @@ int main(int argc, char *argv[]){
             send(client_sock, &out_msg, sizeof(message_t), 0);
         }
 
-    }    
+    } 
+    mvwprintw(error_win, 0,1,"\n");
+    wrefresh(error_win);   
     free(field);
     close(client_sock);
 }

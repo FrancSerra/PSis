@@ -22,6 +22,7 @@
 //The port number should be between 4000 and 40000, and needs to be converted with the htons function.
 #define SOCK_PORT 5000
 #define WINDOW_SIZE 20
+#define MSG_BOX_HEIGHT 18
 #define INITIAL_HEALTH 10
 #define UNUSED_CHAR 35 // # in ASCII
 #define ZERO_ASCII 48 // 0 in ASCII
@@ -37,8 +38,8 @@
 #define BOT_CHAR 42 // * in ASCII
 #define DELIM 36 // $ in ASCII
 #define BUFFER_SIZE 500
-#define ALOC_MAX (WINDOW_SIZE-2)*(WINDOW_SIZE-2)*10 // (sizeof("n")+1) + (sizeof(int)+1)*4 + (sizeof(delim)+1)*5 = (2+1) + (4+1)*4 + (8+1)*5 = 68 (aprox. 70)
-#define MAX_PLAYERS 10 // !!!!!!!!!!! TIRAR DEPOIS!!!!!!
+#define ALOC_MAX 1000
+//#define ALOC_MAX (WINDOW_SIZE-2)*(WINDOW_SIZE-2)*10 // (sizeof("n")+1) + (sizeof(int)+1)*4 + (sizeof(delim)+1)*5 = (2+1) + (4+1)*4 + (8+1)*5 = 68 (aprox. 70)
 
 // Messages types
 typedef enum msg_type{
@@ -81,6 +82,7 @@ typedef struct client_list{
 // Global variables 
 int num_elements, num_prizes;   // total number of players, bots and prizes
 WINDOW * message_win;          // message window
+WINDOW * error_win;
 position_t player;             // information of player 
 int client_sock;
 position_t* field;

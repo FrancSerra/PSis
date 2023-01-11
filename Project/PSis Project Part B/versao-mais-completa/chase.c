@@ -9,6 +9,7 @@ pthread_mutex_t* ptr_mtx = &mtx;
 
 
 
+
 // Functions for lists and updates
 
 client_list* create_head_client_list(){
@@ -291,8 +292,10 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
     if (other_player == NULL || other_player == player){ 
         pthread_rwlock_unlock(&rwlock_list);
 
+        pthread_rwlock_wrlock(&rwlock_list);
         // Cleans the older position
         draw_player(win, &old_play, false);
+        pthread_rwlock_unlock(&rwlock_list);
         // Moves the player to the new position and draws it
         move_client(player, win, x, y);
         // Updates the field for every player
@@ -367,8 +370,11 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
             pthread_mutex_unlock(&mtx);
             
             if (err != -1) {
+                pthread_rwlock_wrlock(&rwlock_list);
                 // Updates the server field
                 draw_player(win, &old_play, false);
+                pthread_rwlock_unlock(&rwlock_list);
+                
                 move_client(player, win, x, y);
 
                 // Updates the field for every player
@@ -441,8 +447,11 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
             // If the new position is empty or if it is its current position
             if (other_client == NULL || other_client == temp){ 
                 pthread_rwlock_unlock(&rwlock_list);
+
+                pthread_rwlock_wrlock(&rwlock_list);
                 // Clean the older position
                 draw_player(win, &old_play, false);
+                pthread_rwlock_unlock(&rwlock_list);
                 // Move the player to the new position and draw it
                 move_client(temp, win, x, y);
                 field_st2all(head);
@@ -566,7 +575,7 @@ position_t* decode_msg_field(int len, char str[], WINDOW* win){
     char* delim;
     delim = numToASCII(DELIM);
 
-    position_t* field = (position_t *) malloc(sizeof(position_t)*(MAX_PLAYERS+MAX_BOTS+MAX_PRIZES)+1);
+    position_t* field = (position_t *) malloc(sizeof(position_t)*ALOC_MAX);
     
     // Check success of memory allocation
     if (field == NULL){
@@ -770,9 +779,13 @@ WINDOW* generate_window() {
     keypad(my_win, true); 
 
     /* creates a window and draws a border  */
-    message_win = newwin(12, WINDOW_SIZE, WINDOW_SIZE, 0);
+    message_win = newwin(MSG_BOX_HEIGHT, WINDOW_SIZE, WINDOW_SIZE, 0);
     box(message_win, 0 , 0);	
 	wrefresh(message_win);
+
+    /* creates a window and draws a border  */
+    error_win = newwin(6, WINDOW_SIZE, WINDOW_SIZE+MSG_BOX_HEIGHT, 0);
+	wrefresh(error_win);
 
     return(my_win);
 }
@@ -819,6 +832,7 @@ void draw_health(position_t * player, int to_do, int conn_client) {
         {
         // Edit player's health
         case 0:
+            // print on the left side of the box until char M
             mvwprintw(message_win, aux,2,"%c:   ", player->c);
             if (player->health >= 0) {
                 mvwprintw(message_win, aux,2,"%c: %d", player->c, player->health);
@@ -861,17 +875,18 @@ void move_client (client_list* client, WINDOW* win, int x, int y){
     new_play.c = client->c;
     new_play.x = client->x;
     new_play.y = client->y;
-    pthread_rwlock_unlock(&rwlock_list);
 
     // Draws the new position
     draw_player(win, &new_play, true);
+    pthread_rwlock_unlock(&rwlock_list);
 }
 
 
 // Handler functions
 
 void sig_handler(int signum){
-  printf("Key ENTER not pressed\n");
+  mvwprintw(error_win, 1,1,"Key not pressed.\n Game over!\n");
+  wrefresh(error_win);
   free(field);
   close(client_sock);
   exit(-1);
