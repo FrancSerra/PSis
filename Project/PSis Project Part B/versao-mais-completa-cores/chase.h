@@ -81,7 +81,6 @@ typedef struct client_list{
 int num_elements, num_prizes;   // total number of players, bots and prizes
 WINDOW * message_win;          // message window
 WINDOW * error_win;
-position_t player;             // information of player 
 int client_sock;
 int char_client; 
 

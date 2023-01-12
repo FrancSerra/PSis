@@ -139,6 +139,7 @@ int main(int argc, char *argv[]){
     int key = -1;
     pthread_t thread_id;
     aux_health0 = 0;
+    position_t player;             // information of player 
 
     struct sigaction sigIntHandler; 
     
