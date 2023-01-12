@@ -3,7 +3,6 @@
 // Global variables
 int aux_health0; // 1 if health reached zero
 WINDOW *my_win;
-int len;
 
 void* rcv_thread(void* arg) {
 
@@ -161,6 +160,7 @@ int main(int argc, char *argv[]){
 
         case ball_info:  // stores the assigned parameters by the server
             player.c = in_msg.c;
+            char_client = in_msg.c;
             player.x = in_msg.x;
             player.y = in_msg.y;
             player.health = in_msg.health;

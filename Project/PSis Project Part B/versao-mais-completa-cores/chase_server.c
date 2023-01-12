@@ -15,7 +15,10 @@ void* bots_thread(void* arg) {
     int new_bot_err, rand_num;
     client_list* aux;
 
-    num_bots = (rand() % (MAX_BOTS - MIN_BOTS + 1)) + MIN_BOTS;
+    do {
+        num_bots = (rand() % (MAX_BOTS - MIN_BOTS + 1)) + MIN_BOTS;
+    } while (num_bots + INIT_PRIZES >= (WINDOW_SIZE-2)*(WINDOW_SIZE-2));
+
     
     for (int i = 0; i < num_bots; i++) {
         // Initializes bots Assigns it's representation (1, 2, etc) and an empty board position. 
@@ -60,20 +63,23 @@ void* prizes_thread(void* arg){
     position_t init_pos;
     int new_prize_err;
 
-    for (int i = 0; i < INIT_PRIZES; i++){
+    if(INIT_PRIZES >= (WINDOW_SIZE-2)*(WINDOW_SIZE-2)) {
+        printf("Window size too small.");
+        close(server_sock);
+        exit(-1);
+    }
 
+    for (int i = 0; i < INIT_PRIZES; i++){
+        
         // Initializes prize(s) Assigns it's representation (1, 2, etc) and an empty board position. 
         init_pos = initialize_bot_prizes(head, false);
-
         pthread_rwlock_wrlock(ptr_rwlock_list);
         // Adds the Prizes(s) into the list of clients
         new_prize_err = insert_new_client(head, init_pos.c, init_pos.x, init_pos.y, init_pos.health, -1); // sock_fd doesn't have a meaning for the prizes
         pthread_rwlock_unlock(ptr_rwlock_list);
-
         if (new_prize_err != -1){ 
             // draws in the board            
             draw_player(my_win, &init_pos, true);
-
             // increments the number of prizes and elements
             pthread_mutex_lock(ptr_mtx);
             num_prizes++;
@@ -85,6 +91,7 @@ void* prizes_thread(void* arg){
             //close(server_sock);
             //exit(-1);
         }
+
     }
 
 
@@ -92,7 +99,7 @@ void* prizes_thread(void* arg){
         
         sleep(TIME_GENERATE_PRIZE);
 
-        if(num_prizes < MAX_PRIZES) {
+        if(num_prizes < MAX_PRIZES && num_elements < (WINDOW_SIZE-2)*(WINDOW_SIZE-2)) {
             // Initialize prize; assigns it's representation (1, 2, etc) and an empty board position. 
             init_pos = initialize_bot_prizes(head, false);
 
@@ -246,6 +253,7 @@ int main(int argc, char *argv[])
     num_elements = 0;
     head = create_head_client_list(); // Creates the linked list where all board info is stored; players, bots, prizes
     my_win = generate_window();
+    char_client = 0;
 
 
     // Create bots and prizes threads

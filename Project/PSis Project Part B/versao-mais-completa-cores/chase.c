@@ -293,7 +293,8 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
     other_player = search_position(head, x, y);
 
     // If the new position is empty or if it is its current position
-    if (other_player == NULL || other_player == player){ 
+    // if (other_player == NULL || other_player == player){
+    if (other_player == NULL){ 
         pthread_rwlock_unlock(&rwlock_list);
 
         // Cleans the older position
@@ -306,6 +307,13 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
         new_pos.x = x;
         new_pos.y = y;
         new_pos.health = old_play.health;
+
+        field_st2all (head, old_pos, new_pos, 1);
+    }
+    else if(other_player == player){
+        pthread_rwlock_unlock(&rwlock_list);
+
+        new_pos = old_pos;
 
         field_st2all (head, old_pos, new_pos, 1);
     }
@@ -469,7 +477,9 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
             other_client = search_position(head, x, y);
 
             // If the new position is empty or if it is its current position
-            if (other_client == NULL || other_client == temp){ 
+
+            // if (other_client == NULL || other_client == temp){ 
+            if (other_client == NULL){ 
                 pthread_rwlock_unlock(&rwlock_list);
 
                 // Clean the older position
@@ -481,6 +491,13 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
                 new_pos.x = x;
                 new_pos.y = y;
                 new_pos.health = old_play.health;
+
+                field_st2all (head, old_pos, new_pos, 1);
+            }
+            else if (other_client == temp){ 
+                pthread_rwlock_unlock(&rwlock_list);
+
+                new_pos = old_pos;
 
                 field_st2all (head, old_pos, new_pos, 1);
             }
@@ -743,11 +760,26 @@ WINDOW* generate_window() {
     keypad(stdscr, TRUE);   /* We get F1, F2 etc..		*/
 	noecho();			    /* Don't echo() while we do getch */
 
+    if(COLOR == 1){
+
+        if(has_colors() == FALSE){
+            endwin();
+	    	printf("Your terminal does not support color\n");
+	    	exit(1);
+	    }
+
+        start_color();			/* Start color 			*/
+    
+        init_pair(1, COLOR_YELLOW, COLOR_BLACK); // yellow for players
+        init_pair(2, COLOR_RED, COLOR_BLACK);    // red for bots
+        init_pair(3, COLOR_GREEN, COLOR_BLACK);  // green for prizes
+    }
+
     /* creates a window and draws a border */ 
     WINDOW * my_win = newwin(WINDOW_SIZE, WINDOW_SIZE, 0, 0);
     box(my_win, 0 , 0);	
 	wrefresh(my_win);
-    keypad(my_win, true); 
+    keypad(my_win, true);
 
     /* creates a window and draws a border  */
     message_win = newwin(MSG_BOX_HEIGHT, WINDOW_SIZE, WINDOW_SIZE, 0);
@@ -790,11 +822,33 @@ void draw_player(WINDOW *win, position_t * player, int delete){
     }
     int p_x = player->x;
     int p_y = player->y;
+
+    if (ch == char_client && COLOR == 1){
+        wattron(win, COLOR_PAIR(1));
+    }
+    else if (ch == BOT_CHAR && COLOR == 1){
+        wattron(win, COLOR_PAIR(2));
+    }
+    else if (ch >= MIN_VALUE_PRIZES && ch <= MAX_VALUE_PRIZES && COLOR == 1){
+        wattron(win, COLOR_PAIR(3));
+    }
+    
     wmove(win, p_y, p_x);
     waddch(win,ch);
     wrefresh(win);
 
     pthread_mutex_unlock(&mtx_draw);
+
+    if (ch == char_client && COLOR == 1){
+        wattroff(win, COLOR_PAIR(1));
+    }
+    else if (ch == BOT_CHAR && COLOR == 1){
+        wattroff(win, COLOR_PAIR(2));
+    }
+    else if (ch >= MIN_VALUE_PRIZES && ch <= MAX_VALUE_PRIZES && COLOR == 1){
+        wattroff(win, COLOR_PAIR(3));
+    }
+
 }
 
 void draw_health(position_t * player, int to_do) {
@@ -815,10 +869,14 @@ void draw_health(position_t * player, int to_do) {
             aux++;
         }
     }
-    switch (to_do)
-    {
+
+    switch (to_do){
     // Edit player's health
     case 0:
+        if(COLOR == 1 && player->c == char_client){
+            wattron(message_win, COLOR_PAIR(1));
+        }
+
         mvwprintw(message_win, aux,2,"%c:   ", player->c);
         if (player->health >= 0) {
             mvwprintw(message_win, aux,2,"%c: %d", player->c, player->health);
@@ -827,12 +885,16 @@ void draw_health(position_t * player, int to_do) {
             mvwprintw(message_win, aux,2,"%c: %d", player->c, 0);
         }
         wrefresh(message_win);
+
+        if(COLOR == 1 && player->c == char_client){
+            wattroff(message_win, COLOR_PAIR(1));
+        }
+
         break;
     
     // Deletes player's health, cleans the message window
     case 1:
         mvwprintw(message_win, aux,2,"     ");
-        // mvwprintw(message_win, aux,2,"-----");
         wrefresh(message_win);
         break;
     

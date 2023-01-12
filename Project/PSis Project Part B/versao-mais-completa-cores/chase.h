@@ -21,7 +21,7 @@
 
 //The port number should be between 4000 and 40000, and needs to be converted with the htons function.
 #define SOCK_PORT 5000
-#define WINDOW_SIZE 20
+#define WINDOW_SIZE 5
 #define MSG_BOX_HEIGHT 18
 #define INITIAL_HEALTH 10
 #define UNUSED_CHAR 35 // # in ASCII
@@ -36,6 +36,8 @@
 #define MAX_VALUE_PRIZES 53 // 5 in ASCII
 #define MIN_VALUE_PRIZES 49 // 1 in ASCII
 #define BOT_CHAR 42 // * in ASCII
+
+#define COLOR 1
 
 // Messages types
 typedef enum msg_type{
@@ -82,6 +84,7 @@ WINDOW * error_win;
 position_t player;             // information of player 
 int client_sock;
 position_t* field;
+int char_client;
 
 // Functions for lists and updates -- comments in file chase.c
 client_list* create_head_client_list();
