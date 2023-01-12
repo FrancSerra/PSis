@@ -3,10 +3,10 @@
 // Create mutex and rwlocks
 static pthread_rwlock_t rwlock_list = PTHREAD_RWLOCK_INITIALIZER; // rwlock to access the list
 static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER; // mutex to access num_elements and num_prizes
+pthread_mutex_t mtx_draw = PTHREAD_MUTEX_INITIALIZER; // mutex to access draw_player and draw_health
 
 pthread_rwlock_t* ptr_rwlock_list = &rwlock_list;
 pthread_mutex_t* ptr_mtx = &mtx;
-
 
 
 
@@ -87,7 +87,7 @@ int delete_client(client_list* head, int socket_id, WINDOW* win){
 
         // delete player and its health from the window
         draw_player(win, &delete_pos, false);
-        draw_health(&delete_pos, 1, false);
+        draw_health(&delete_pos, 1);
 
         free(temp); // free old head
         return 1;   
@@ -113,7 +113,7 @@ int delete_client(client_list* head, int socket_id, WINDOW* win){
 
     // delete player and its health from the window 
     draw_player(win, &delete_pos, false);
-    draw_health(&delete_pos, 1, false);
+    draw_health(&delete_pos, 1);
 
     free(temp); // Free memory
     return 1;   //returns 1 if key was present and deleted
@@ -225,7 +225,7 @@ int health_0(client_list* head, client_list* player, WINDOW* win) {
         new_play.c = player->c;
         new_play.health = player->health;
 
-        draw_health(&new_play, 0, false);
+        draw_health(&new_play, 0);
         out_msg = msg2send(health0, UNUSED_CHAR, -1, -1, -1, -1);
         send(player->socket_id, &out_msg, sizeof(message_t), 0);
         return 1;
@@ -242,6 +242,7 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
     client_list *player;
     client_list *other_player;
     position_t new_play, old_play;
+    position_t new_pos, old_pos;
 
     pthread_rwlock_rdlock(&rwlock_list);
     // Search player in the list by its socket_id
@@ -260,7 +261,10 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
     old_play.c = player->c;
     old_play.x = player->x;
     old_play.y = player->y;
+    old_play.health = player->health;
     pthread_rwlock_unlock(&rwlock_list);
+
+    old_pos = old_play;
 
     // Computes where it will land following the given direction
     if (direction == KEY_UP){
@@ -292,14 +296,18 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
     if (other_player == NULL || other_player == player){ 
         pthread_rwlock_unlock(&rwlock_list);
 
-        pthread_rwlock_wrlock(&rwlock_list);
         // Cleans the older position
         draw_player(win, &old_play, false);
-        pthread_rwlock_unlock(&rwlock_list);
         // Moves the player to the new position and draws it
         move_client(player, win, x, y);
         // Updates the field for every player
-        field_st2all (head);
+
+        new_pos.c = old_play.c;
+        new_pos.x = x;
+        new_pos.y = y;
+        new_pos.health = old_play.health;
+
+        field_st2all (head, old_pos, new_pos, 1);
     }
     // If the new position is occupied
     else{ 
@@ -313,15 +321,23 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
                     player->health++;
                     new_play.c = player->c;
                     new_play.health = player->health;
-                    draw_health(&new_play, 0, false);
+                    draw_health(&new_play, 0);
                 }
 
             // Decrements other player health and checks if reached 0
             other_player->health--;
             pthread_rwlock_unlock(&rwlock_list);
 
+            pthread_rwlock_rdlock(&rwlock_list);
+            old_pos.health = player->health;
+            new_pos.c = other_player->c;
+            new_pos.x = other_player->x;
+            new_pos.y = other_player->y;
+            new_pos.health = other_player->health;
+            pthread_rwlock_unlock(&rwlock_list);
+
             // Updates the field for every player
-            field_st2all (head);
+            field_st2all (head, old_pos, new_pos, 2);
 
             pthread_rwlock_rdlock(&rwlock_list);
             is_health0 = health_0(head, other_player, win) ;
@@ -335,7 +351,7 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
             new_play.health = other_player->health;
             pthread_rwlock_unlock(&rwlock_list);
 
-            draw_health(&new_play, 0, false);
+            draw_health(&new_play, 0);
             
             
         }
@@ -358,27 +374,32 @@ int update_client(client_list *head, int socket_id, int direction, WINDOW *win){
 
                 new_play.c = player->c;
                 new_play.health = player->health;
-                draw_health(&new_play, 0, false);
+                draw_health(&new_play, 0);
             }
             // Delete "eaten" prize and decrement number of prizes in the field
             err = delete_prizes(head, other_player, win);
             pthread_rwlock_unlock(&rwlock_list);
-
-            pthread_mutex_lock(&mtx);
-            num_prizes --;
-            num_elements --;
-            pthread_mutex_unlock(&mtx);
             
             if (err != -1) {
-                pthread_rwlock_wrlock(&rwlock_list);
+
+                pthread_mutex_lock(&mtx);
+                num_prizes --;
+                num_elements --;
+                pthread_mutex_unlock(&mtx);
+
                 // Updates the server field
                 draw_player(win, &old_play, false);
-                pthread_rwlock_unlock(&rwlock_list);
                 
                 move_client(player, win, x, y);
 
+                new_pos.c = old_pos.c;
+                new_pos.x = x;
+                new_pos.y = y;
+                pthread_rwlock_rdlock(&rwlock_list);
+                new_pos.health = player->health;
+                pthread_rwlock_unlock(&rwlock_list);
                 // Updates the field for every player
-                field_st2all (head);
+                field_st2all (head, old_pos, new_pos, 1);
             }   
         }
         else{
@@ -398,6 +419,7 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
     int x,y;
     client_list *other_client;
     position_t new_play, old_play;
+    position_t new_pos, old_pos;
 
     pthread_rwlock_rdlock(&rwlock_list);
     // Search in the list
@@ -412,8 +434,10 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
             old_play.c = temp->c;
             old_play.x = temp->x;
             old_play.y = temp->y;
-
+            old_play.health = temp->health;
             pthread_rwlock_unlock(&rwlock_list);
+
+            old_pos = old_play;
 
             // Moves up           
             if (mod == 1){
@@ -448,13 +472,17 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
             if (other_client == NULL || other_client == temp){ 
                 pthread_rwlock_unlock(&rwlock_list);
 
-                pthread_rwlock_wrlock(&rwlock_list);
                 // Clean the older position
                 draw_player(win, &old_play, false);
-                pthread_rwlock_unlock(&rwlock_list);
                 // Move the player to the new position and draw it
                 move_client(temp, win, x, y);
-                field_st2all(head);
+
+                new_pos.c = old_play.c;
+                new_pos.x = x;
+                new_pos.y = y;
+                new_pos.health = old_play.health;
+
+                field_st2all (head, old_pos, new_pos, 1);
             }
             // If the new position is occupied
             else{ 
@@ -465,7 +493,17 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
                     // Decrements that player's health
                     other_client->health--;
                     pthread_rwlock_unlock(&rwlock_list);
-                    field_st2all(head);
+
+                    pthread_rwlock_rdlock(&rwlock_list);
+                    new_pos.c = other_client->c;
+                    new_pos.x = other_client->x;
+                    new_pos.y = other_client->y;
+                    new_pos.health = other_client->health;
+                    pthread_rwlock_unlock(&rwlock_list);
+
+                    // Updates the field for every player
+                    field_st2all (head, old_pos, new_pos, 2);
+
 
                     pthread_rwlock_rdlock(&rwlock_list);
                     int is_health0 = health_0(head, other_client, win);
@@ -477,7 +515,7 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
                     new_play.c = other_client->c;
                     new_play.health = other_client->health;
                     pthread_rwlock_unlock(&rwlock_list);
-                    draw_health(&new_play, 0, false);
+                    draw_health(&new_play, 0);
                 }
                 else{
                     pthread_rwlock_unlock(&rwlock_list);
@@ -496,162 +534,6 @@ client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* wi
 }
 
 
-
-// Functions to send message of type field_status 
-
-char* field2msg(client_list* head){
-// Function that stores in a string the client list information to be sent in a message (type field_status)
-// Inputs: pointer to the head node
-// Outputs: message string
-
-    char* msg_result = (char *) malloc(sizeof(char)*(ALOC_MAX)+1); 
-    char* msg = (char *) malloc(sizeof(char)*(ALOC_MAX)+1); 
-
-    // Check success of memory allocation
-    if(msg_result == NULL || msg == NULL){ 
-        printf("Error allocating memory.\n");
-        return NULL;
-    }
-
-    char* delim;
-
-    // Create the delimiter that will be sent inside the message
-    delim = numToASCII(DELIM);    
-
-    pthread_rwlock_rdlock(&rwlock_list);
-    for(client_list* temp = head->next; temp != NULL; temp = temp->next) {
-        
-        sprintf(msg,"%s","n"); // adds a flag to separate players
-        strcat(msg,delim);
-        strcat(msg_result,msg);
-        sprintf(msg,"%d",temp->x); // adds position x
-        strcat(msg,delim);
-        strcat(msg_result,msg);
-        sprintf(msg,"%d",temp->y); // adds position y
-        strcat(msg,delim);
-        strcat(msg_result,msg);
-        sprintf(msg,"%d",temp->c); // adds character
-        strcat(msg,delim);
-        strcat(msg_result,msg);
-        sprintf(msg,"%d",temp->health); // adds health
-        strcat(msg,delim);
-        strcat(msg_result,msg);
-
-    }
-    pthread_rwlock_unlock(&rwlock_list);
-
-    free(msg); // free allocated memory
-    free(delim); // free allocated memory
-
-    return msg_result;
-}
-
-char *numToASCII(int num) { 
-// Function that creates the string that will delimit the parameters in the message to be sent
-// Inputs: ASCII code of the delimiter
-// Outputs: delimiter string
-
-    char *string =(char*) malloc(sizeof(char)*5 + 1);
-
-    // Check success of memory allocation
-    if (string == NULL){
-        printf("Error allocating memory\n");
-        return NULL;
-    }
-
-    string[0] = num;
-    string[1] = 0;
-    return string;
-}
-
-position_t* decode_msg_field(int len, char str[], WINDOW* win){
-// Function that decodes the message sent in the field_status reply
-// Inputs: number of elements in the client list, received string message, window
-// Outputs: array of structs position_t with all info about the elements in the field
-
-    int flag_x, flag_y, flag_health, letter;
-    char letter_c;
-
-    char* delim;
-    delim = numToASCII(DELIM);
-
-    position_t* field = (position_t *) malloc(sizeof(position_t)*ALOC_MAX);
-    
-    // Check success of memory allocation
-    if (field == NULL){
-        printf("Error allocating memory\n");
-        return NULL;
-    }
-
-    // For all elements in the string
-    for(int i=0; i<len;i++){
-
-        // Decodes the string
-        if (i==0){
-            strtok(str, delim);
-        }
-        else{       
-            strtok(NULL, delim);
-        }
-
-        flag_x = atoi(strtok(NULL, delim));
-        flag_y = atoi(strtok(NULL, delim));
-        letter = atoi(strtok(NULL, delim));
-        letter_c = letter;
-        flag_health = atoi(strtok(NULL, delim));
-
-        // Stores the information
-        field[i].c = letter_c;
-        field[i].x = flag_x;
-        field[i].y = flag_y;
-        field[i].health = flag_health;
-
-        // Updates the field
-        draw_player(win, &field[i], true);
-        if(field[i].health != -1){
-            draw_health(&field[i], 0, false); 
-        }
-
-    }
-
-    free(delim); // free allocated memory
-
-    return field;
-
-}
-
-void field_st2all (client_list* head) {
-    message_t out_msg;
-    message_ballmov_t out_msg_ballmov;
-    client_list* temp;
-    char *msg_aux;
-    char msg[ALOC_MAX];
-    int aux_elements;
-    out_msg = msg2send(field_stat, UNUSED_CHAR, -1, -1, -1, -1);
-
-    //encodes the field status in an unique string
-    msg_aux = field2msg(head);
-
-    strcpy(msg, msg_aux);
-
-    //and sends it to the player for him to update it's own board.
-    pthread_mutex_lock(ptr_mtx);
-    aux_elements = num_elements;
-    pthread_mutex_unlock(ptr_mtx);
-
-    out_msg_ballmov = msg2send_ballmov(field_stat, aux_elements, msg);
-    free(msg_aux);
-
-    pthread_rwlock_rdlock(&rwlock_list);
-    for (temp = head->next; temp != NULL; temp = temp->next) {
-        if (temp->socket_id != -1) {
-            send(temp->socket_id, &out_msg, sizeof(message_t), 0);
-            send(temp->socket_id, &out_msg_ballmov, sizeof(message_ballmov_t), 0);
-        }
-    }
-    pthread_rwlock_unlock(&rwlock_list);
-    
-}
 
 // Functions for communications (initialize and messages)
 
@@ -672,16 +554,17 @@ message_t msg2send(msg_type type, char c, int x, int y, int direction, int healt
     return out_msg;
 }
 
-message_ballmov_t msg2send_ballmov(msg_type type, int num_elem, char str[]) {
+message_fieldstat_t msg2send_fieldstat(int flag, position_t old_pos, position_t new_pos) {
 // Function that fills in info in the message struct (in case of field_status type)
-// Inputs: message type, total number of elements in the list, string
+// Inputs: 
 // Outputs: message to be sent
 
-    message_ballmov_t out_msg;
+    message_fieldstat_t out_msg;
 
-    out_msg.type = type;
-    out_msg.num_elem = num_elem;
-    strcpy(out_msg.str,str);
+    out_msg.flag = flag;
+    out_msg.old_pos = old_pos;
+    out_msg.new_pos = new_pos;
+
     
     return out_msg;
 }
@@ -761,6 +644,94 @@ position_t initialize_bot_prizes(client_list *head, int bot){
     return init_pos;
 }
 
+void field_st2all (client_list* head, position_t old_pos, position_t new_pos, int flag_2msg) {
+    message_t out_msg;
+    message_fieldstat_t out_msg_fieldstat;
+    client_list* temp;
+    int flag_1msg = 1; // sends only one fieldstat message 
+
+    out_msg = msg2send(field_stat, UNUSED_CHAR, -1, -1, flag_1msg, -1); 
+    out_msg_fieldstat = msg2send_fieldstat(flag_2msg, old_pos, new_pos);
+
+    pthread_rwlock_rdlock(&rwlock_list);
+    for (temp = head->next; temp != NULL; temp = temp->next) {
+        if (temp->socket_id != -1) {
+            send(temp->socket_id, &out_msg, sizeof(message_t), 0);
+            send(temp->socket_id, &out_msg_fieldstat, sizeof(message_fieldstat_t), 0);
+        }
+    }
+    pthread_rwlock_unlock(&rwlock_list);
+    
+}
+
+void send_all_field(client_list* head, int flag_1msg, int sock_fd){   
+    message_t out_msg;
+    message_fieldstat_t out_msg_fieldstat;
+    client_list* temp;
+    position_t new_pos;
+    int aux_elements;
+
+    pthread_mutex_lock(ptr_mtx);
+    aux_elements = num_elements;
+    pthread_mutex_unlock(ptr_mtx);
+
+    out_msg = msg2send(field_stat, UNUSED_CHAR, -1, -1, flag_1msg, aux_elements); // send number of elements in the health parameter
+    send(sock_fd, &out_msg, sizeof(message_t), 0);
+
+
+    pthread_rwlock_rdlock(&rwlock_list);
+    for (temp = head->next; temp != NULL; temp = temp->next) {
+        new_pos.c = temp->c;
+        new_pos.x = temp->x;
+        new_pos.y = temp->y;
+        new_pos.health = temp->health;
+    
+        out_msg_fieldstat = msg2send_fieldstat(0, new_pos, new_pos);
+        send(sock_fd, &out_msg_fieldstat, sizeof(message_fieldstat_t), 0);
+
+    }
+    pthread_rwlock_unlock(&rwlock_list);
+}
+
+void mng_field_status(WINDOW* my_win, message_fieldstat_t msg){
+
+    switch (msg.flag){
+    case 0:
+        draw_player(my_win, &msg.new_pos, true);
+        if (msg.new_pos.health != -1){
+            draw_health(&msg.new_pos, 0);
+        }
+        break;
+
+    case 1:
+        if(msg.old_pos.x != msg.new_pos.x || msg.old_pos.y != msg.new_pos.y){
+            draw_player(my_win, &msg.old_pos, false);
+            draw_player(my_win, &msg.new_pos, true);
+
+            if(msg.old_pos.health != msg.new_pos.health && msg.old_pos.c != BOT_CHAR){
+                draw_health(&msg.new_pos, 0);
+            }
+        }
+        break;
+
+    case 2:
+        draw_health(&msg.new_pos, 0);
+        if(msg.old_pos.c != BOT_CHAR && msg.old_pos.c != msg.new_pos.c){
+            draw_health(&msg.old_pos, 0);
+        }
+        break;
+
+    case 3:
+        draw_player(my_win, &msg.old_pos, false);
+        draw_health(&msg.old_pos, 1);
+        break;
+    
+    default:
+        break;
+    }
+
+}
+
 
 // Functions for graphical part (windows and draw players, bots and prizes in the field)
 
@@ -790,10 +761,28 @@ WINDOW* generate_window() {
     return(my_win);
 }
 
+void reset_windows(WINDOW* my_win){
+    werase(my_win);
+    wrefresh (my_win);
+
+    werase(message_win);
+    wrefresh (message_win);
+
+    box(my_win, 0 , 0);	
+	wrefresh(my_win);
+    keypad(my_win, true);
+
+    box(message_win, 0 , 0);	
+	wrefresh(message_win);
+}
+
 void draw_player(WINDOW *win, position_t * player, int delete){
 // Function provided by the Professor
 
     int ch;
+
+    pthread_mutex_lock(&mtx_draw);
+
     if(delete){
         ch = player->c;
     }else{
@@ -804,57 +793,55 @@ void draw_player(WINDOW *win, position_t * player, int delete){
     wmove(win, p_y, p_x);
     waddch(win,ch);
     wrefresh(win);
+
+    pthread_mutex_unlock(&mtx_draw);
 }
 
-void draw_health(position_t * player, int to_do, int conn_client) {
+void draw_health(position_t * player, int to_do) {
 // Function prints the health of the player in the message window
 // Inputs: information to be printed, flag to-do, flag connected client
 // Outputs: --
 
-    // to_do : 1 - editar player health, 2 - eliminar player health
+    // to_do : 0 - editar player health, 1 - eliminar player health
     int aux = 1;
     int c = 65; // 'A' in ASCII
- 
-    // If it is one client that just connected, print its health
-    if(conn_client) { 
-        mvwprintw(message_win, 1,2,"%c: %d", player->c, player->health);
-        wrefresh(message_win);
-    }
-    else {
-        // Find which player (by its character)
-        if (player != NULL) {
-            while( c != player->c){
-                c++;
-                aux++;
-            }
-        }
-        switch (to_do)
-        {
-        // Edit player's health
-        case 0:
-            // print on the left side of the box until char M
-            mvwprintw(message_win, aux,2,"%c:   ", player->c);
-            if (player->health >= 0) {
-                mvwprintw(message_win, aux,2,"%c: %d", player->c, player->health);
-            }
-            else {
-                mvwprintw(message_win, aux,2,"%c: %d", player->c, 0);
-            }
-            wrefresh(message_win);
-            break;
-        
-        // Deletes player's health, cleans the message window
-        case 1:
-            mvwprintw(message_win, aux,2,"     ");
-            // mvwprintw(message_win, aux,2,"-----");
-            wrefresh(message_win);
-            break;
-        
-        default:
-            break;
-        }
 
+    pthread_mutex_lock(&mtx_draw);
+ 
+    // Find which player (by its character)
+    if (player != NULL) {
+        while( c != player->c){
+            c++;
+            aux++;
+        }
     }
+    switch (to_do)
+    {
+    // Edit player's health
+    case 0:
+        mvwprintw(message_win, aux,2,"%c:   ", player->c);
+        if (player->health >= 0) {
+            mvwprintw(message_win, aux,2,"%c: %d", player->c, player->health);
+        }
+        else {
+            mvwprintw(message_win, aux,2,"%c: %d", player->c, 0);
+        }
+        wrefresh(message_win);
+        break;
+    
+    // Deletes player's health, cleans the message window
+    case 1:
+        mvwprintw(message_win, aux,2,"     ");
+        // mvwprintw(message_win, aux,2,"-----");
+        wrefresh(message_win);
+        break;
+    
+    default:
+        break;
+    }
+
+    pthread_mutex_unlock(&mtx_draw);
+
 }
 
 void move_client (client_list* client, WINDOW* win, int x, int y){

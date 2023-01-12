@@ -8,10 +8,9 @@ int len;
 void* rcv_thread(void* arg) {
 
     int sock_fd = *(int*)arg;
-    int nbytes;
+    int nbytes, flag_1msg, aux_elements;
     message_t in_msg, out_msg;
-    char msg_client[ALOC_MAX];
-    message_ballmov_t in_msg_ballmov;
+    message_fieldstat_t in_msg_fd;
 
     while(1){
         nbytes = recv(sock_fd, &in_msg, sizeof(in_msg), 0);
@@ -39,25 +38,56 @@ void* rcv_thread(void* arg) {
             break;
         
         case field_stat:
-            nbytes = recv(sock_fd, &in_msg_ballmov, sizeof(in_msg_ballmov), 0);
-            if(nbytes != sizeof(message_ballmov_t) || in_msg_ballmov.type != field_stat){
+
+            flag_1msg = in_msg.direction;
+            aux_elements = in_msg.health;
+
+            switch (flag_1msg){
+            case 0:
+                for (int i = 0; i < aux_elements; i++){
+                    nbytes = recv(sock_fd, &in_msg_fd, sizeof(in_msg_fd), 0);
+                    if(nbytes != sizeof(message_fieldstat_t)){
+                        break;
+                    }
+
+                    draw_player(my_win, &in_msg_fd.new_pos, true);
+                    if (in_msg_fd.new_pos.health != -1){
+                        draw_health(&in_msg_fd.new_pos, 0);
+                    }
+                }
+                
+                break;
+
+            case 1:
+                nbytes = recv(sock_fd, &in_msg_fd, sizeof(in_msg_fd), 0);
+                if(nbytes != sizeof(message_fieldstat_t)){
+                    break;
+                }
+
+                mng_field_status(my_win, in_msg_fd);
+                break;
+
+            case 2:
+                reset_windows(my_win);
+                for (int i = 0; i < aux_elements; i++){
+                    nbytes = recv(sock_fd, &in_msg_fd, sizeof(in_msg_fd), 0);
+                    if(nbytes != sizeof(message_fieldstat_t)){
+                        break;
+                    }
+
+                    draw_player(my_win, &in_msg_fd.new_pos, true);
+                    if (in_msg_fd.new_pos.health != -1){
+                        draw_health(&in_msg_fd.new_pos, 0);
+                    }
+
+                }
+                break;
+            
+            default:
                 break;
             }
-
-            //stores the field info encoded by a string
-            strcpy(msg_client, in_msg_ballmov.str);
-            //string decode process
-            for (int j = 0; j < len; j++){
-                // Deletes the previous positions
-                draw_player(my_win, &field[j], false);
-                if (field[j].health != -1){
-                    // Deletes the previous health
-                    draw_health(&field[j], 1, false);
-                }
-            }
-            len = in_msg_ballmov.num_elem;
-            field = decode_msg_field(len, msg_client, my_win);
             break;
+
         default:
             break;
         }
@@ -65,7 +95,6 @@ void* rcv_thread(void* arg) {
     
     mvwprintw(error_win, 1,1,"Communication error\n");
     wrefresh(error_win);
-    free(field);
     close(sock_fd);
     exit(-1);
 }
@@ -95,8 +124,6 @@ int main(int argc, char *argv[]){
     int key = -1;
     pthread_t thread_id;
     aux_health0 = 0;
-    field = (position_t *)malloc(sizeof(position_t)*ALOC_MAX);
-    len = 0;
 
     // If the provided address is invalid, exit.
     if(inet_aton(argv[1], &server_address.sin_addr) < 1){
@@ -111,7 +138,6 @@ int main(int argc, char *argv[]){
     int err = connect(client_sock, (struct sockaddr*) &server_address, sizeof(server_address));
     if(err == -1){
         perror("connect");
-        free(field);
         close(client_sock);
         exit(-1);
     }
@@ -123,7 +149,6 @@ int main(int argc, char *argv[]){
 
     if (nbytes != sizeof(message_t)) {
         perror("Error");
-        free(field);
         close(client_sock);
         exit(-1);
     }
@@ -131,21 +156,19 @@ int main(int argc, char *argv[]){
     switch (in_msg.type){
         case error:
             printf("Error connecting this client.\n");
-            free(field);
             close(client_sock);
             exit(-1);
+
         case ball_info:  // stores the assigned parameters by the server
             player.c = in_msg.c;
             player.x = in_msg.x;
             player.y = in_msg.y;
             player.health = in_msg.health;
             
-            field[0] = player;
-            len = 1;
             break; // go to the main loop
+
         default:
             printf("Error: You have been disconnected.\n");
-            free(field);
             close(client_sock);
             exit(-1);
     }
@@ -153,7 +176,7 @@ int main(int argc, char *argv[]){
     //creates the window and draws the player
     my_win = generate_window();
     draw_player(my_win, &player, true);
-    draw_health(&player, 0, true);
+    draw_health(&player, 0);
 
     // Create thread
     pthread_create(&thread_id, NULL, rcv_thread, (void*)&client_sock);
@@ -179,6 +202,5 @@ int main(int argc, char *argv[]){
     } 
     mvwprintw(error_win, 0,1,"\n");
     wrefresh(error_win);   
-    free(field);
     close(client_sock);
 }

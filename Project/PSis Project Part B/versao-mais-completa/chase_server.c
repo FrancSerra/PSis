@@ -24,11 +24,11 @@ void* bots_thread(void* arg) {
         pthread_rwlock_wrlock(ptr_rwlock_list);
         // Adds the bots into the list of clients
         new_bot_err = insert_new_client(head, init_pos.c, init_pos.x, init_pos.y, init_pos.health, -1); // sock_fd doesn't have a meaning for the prizes
+        pthread_rwlock_unlock(ptr_rwlock_list);
 
         if (new_bot_err != -1){ 
             // draws in the board            
             draw_player(my_win, &init_pos, true);
-            pthread_rwlock_unlock(ptr_rwlock_list);
 
             // increments the number of elements
             pthread_mutex_lock(ptr_mtx);
@@ -36,13 +36,11 @@ void* bots_thread(void* arg) {
             pthread_mutex_unlock(ptr_mtx);
         }
         else{
-            pthread_rwlock_unlock(ptr_rwlock_list);
             i--;
             //close(server_sock);
             //exit(-1);
         }
     }
-    field_st2all(head);
 
     while(1) {
         sleep(TIME_UPDATE_BOTS);
@@ -70,12 +68,11 @@ void* prizes_thread(void* arg){
         pthread_rwlock_wrlock(ptr_rwlock_list);
         // Adds the Prizes(s) into the list of clients
         new_prize_err = insert_new_client(head, init_pos.c, init_pos.x, init_pos.y, init_pos.health, -1); // sock_fd doesn't have a meaning for the prizes
+        pthread_rwlock_unlock(ptr_rwlock_list);
 
         if (new_prize_err != -1){ 
-
             // draws in the board            
             draw_player(my_win, &init_pos, true);
-            pthread_rwlock_unlock(ptr_rwlock_list);
 
             // increments the number of prizes and elements
             pthread_mutex_lock(ptr_mtx);
@@ -84,14 +81,12 @@ void* prizes_thread(void* arg){
             pthread_mutex_unlock(ptr_mtx);
         }
         else{
-            pthread_rwlock_unlock(ptr_rwlock_list);
             i--;
             //close(server_sock);
             //exit(-1);
         }
     }
 
-    field_st2all(head);
 
     while(1) {
         
@@ -108,10 +103,8 @@ void* prizes_thread(void* arg){
 
             if (new_prize_err != -1){    
                 
-                pthread_rwlock_wrlock(ptr_rwlock_list);
                 // draws in the board            
                 draw_player(my_win, &init_pos, true);
-                pthread_rwlock_unlock(ptr_rwlock_list);
 
                 // increments the number of prizes
                 pthread_mutex_lock(ptr_mtx);
@@ -120,7 +113,7 @@ void* prizes_thread(void* arg){
                 pthread_mutex_unlock(ptr_mtx);
                 
 
-                field_st2all(head);
+                field_st2all(head, init_pos, init_pos, 0);
             }
         }
 
@@ -135,7 +128,7 @@ void* client_thread(void* arg){
     int nbytes, err_update, delete_client_err;
     message_t in_msg, out_msg;
     client_list* client;  
-    position_t new_play;
+    position_t new_play, old_pos;
 
     while(1){
         nbytes = recv(sock_fd, &in_msg, sizeof(in_msg), 0);
@@ -155,12 +148,15 @@ void* client_thread(void* arg){
 
             pthread_rwlock_rdlock(ptr_rwlock_list);
             new_play.c = client->c;
+            new_play.x = client->x;
+            new_play.y = client->y;
             new_play.health = client->health;
             pthread_rwlock_unlock(ptr_rwlock_list);
             
+            draw_health(&new_play, 0);
 
-            draw_health(&new_play, 0, false);
-            field_st2all (head);
+            send_all_field(head, 2, sock_fd);
+            field_st2all (head, new_play, new_play, 2);
         }
 
         // updates the board
@@ -174,6 +170,14 @@ void* client_thread(void* arg){
             }
         }
     }
+
+    pthread_rwlock_rdlock(ptr_rwlock_list);
+    client = search_client(head, sock_fd);
+    old_pos.c = client->c;
+    old_pos.x = client->x;
+    old_pos.y = client->y;
+    old_pos.health = client->health;
+    pthread_rwlock_unlock(ptr_rwlock_list);
 
     pthread_rwlock_wrlock(ptr_rwlock_list);
     //deletes the client from the list of clients
@@ -194,7 +198,7 @@ void* client_thread(void* arg){
         pthread_mutex_unlock(ptr_mtx);
     }
 
-    field_st2all (head);
+    field_st2all (head, old_pos, old_pos, 3);
     close(sock_fd);
     pthread_exit(NULL);
 }
@@ -280,11 +284,9 @@ int main(int argc, char *argv[])
                         num_elements++; 
                         pthread_mutex_unlock(ptr_mtx);
 
-                        pthread_rwlock_wrlock(ptr_rwlock_list);
                         // Draws the new player in the server board
                         draw_player(my_win, &init_pos, true);
-                        pthread_rwlock_unlock(ptr_rwlock_list);
-                        draw_health(&init_pos, 0, false);
+                        draw_health(&init_pos, 0);
 
                         //sends a message to the player containing the assigned, position and character 
                         out_msg = msg2send(ball_info, init_pos.c, init_pos.x, init_pos.y, -1, INITIAL_HEALTH);
@@ -305,8 +307,9 @@ int main(int argc, char *argv[])
                 send(sock_fd, &out_msg, sizeof(message_t), 0);
                 
                 if(flag_thread == 1) {
+                    send_all_field(head, 0, sock_fd);
                     // Updates the field for every player
-                    field_st2all (head);
+                    field_st2all (head, init_pos, init_pos, 0);
                     pthread_create(&thread_id, NULL, client_thread,(void*)&sock_fd);
                 }
                 else {

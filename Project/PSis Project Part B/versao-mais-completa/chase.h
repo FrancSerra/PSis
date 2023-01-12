@@ -36,10 +36,6 @@
 #define MAX_VALUE_PRIZES 53 // 5 in ASCII
 #define MIN_VALUE_PRIZES 49 // 1 in ASCII
 #define BOT_CHAR 42 // * in ASCII
-#define DELIM 36 // $ in ASCII
-#define BUFFER_SIZE 500
-#define ALOC_MAX 1000
-//#define ALOC_MAX (WINDOW_SIZE-2)*(WINDOW_SIZE-2)*10 // (sizeof("n")+1) + (sizeof(int)+1)*4 + (sizeof(delim)+1)*5 = (2+1) + (4+1)*4 + (8+1)*5 = 68 (aprox. 70)
 
 // Messages types
 typedef enum msg_type{
@@ -63,12 +59,12 @@ typedef struct position_t {
     int health;         // client health
 } position_t;
 
-// Struct messages to send in fiel_status message type
-typedef struct message_ballmov_t{
-    msg_type type;          // message type
-    int num_elem;           // total number of elements in the field (players, bots and prizes)
-    char str[ALOC_MAX];  // string to send field information
-} message_ballmov_t;
+// Struct messages to send in field_status message type
+typedef struct message_fieldstat_t{
+    int flag;        
+    position_t old_pos;     
+    position_t new_pos;  
+} message_fieldstat_t;
 
 // Struct list of clients
 typedef struct client_list{
@@ -99,22 +95,20 @@ int health_0(client_list* head, client_list* player, WINDOW* win);
 int update_client(client_list* head, int socket_id, int direction, WINDOW* win);
 client_list* update_bot(client_list *head, client_list* aux, int mod, WINDOW* win);
 
-// Functions to send message of type field_status 
-char* field2msg(client_list* head);
-char *numToASCII(int num);
-position_t* decode_msg_field(int len, char str[ALOC_MAX], WINDOW* win);
-void field_st2all (client_list* head);
-
 // Functions for communications (initialize and messages) -- comments in file chase.c
 message_t msg2send(msg_type type, char c, int x, int y, int direction, int health);
-message_ballmov_t msg2send_ballmov(msg_type type, int num_elem, char str[ALOC_MAX]);
+message_fieldstat_t msg2send_fieldstat(int flag, position_t old_pos, position_t new_pos);
 position_t initialize_player(client_list* head);
 position_t initialize_bot_prizes(client_list *head, int bot);
+void field_st2all (client_list* head, position_t old_pos, position_t new_pos, int flag_2msg);
+void send_all_field(client_list* head, int flag_1msg, int sock_fd);
+void mng_field_status(WINDOW* my_win, message_fieldstat_t msg);
 
 // Functions for graphical part (windows and draw players, bots and prizes in the field) -- comments in file chase.c
 WINDOW* generate_window();
+void reset_windows(WINDOW* my_win);
 void draw_player(WINDOW *win, position_t * player, int delete);
-void draw_health(position_t * player, int to_do, int conn_client);
+void draw_health(position_t * player, int to_do);
 void move_client (client_list* client, WINDOW* win, int x, int y);
 
 // Handler functions
