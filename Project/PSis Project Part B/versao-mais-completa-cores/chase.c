@@ -226,7 +226,7 @@ int health_0(client_list* head, client_list* player, WINDOW* win) {
         new_play.health = player->health;
 
         draw_health(&new_play, 0);
-        out_msg = msg2send(health0, UNUSED_CHAR, -1, -1, -1, -1);
+        out_msg = msg2send(health0, new_play.c, -1, -1, -1, new_play.health);
         send(player->socket_id, &out_msg, sizeof(message_t), 0);
         return 1;
     }
@@ -672,7 +672,7 @@ void field_st2all (client_list* head, position_t old_pos, position_t new_pos, in
 
     pthread_rwlock_rdlock(&rwlock_list);
     for (temp = head->next; temp != NULL; temp = temp->next) {
-        if (temp->socket_id != -1) {
+        if (temp->health >0 && temp->socket_id != -1) {
             send(temp->socket_id, &out_msg, sizeof(message_t), 0);
             send(temp->socket_id, &out_msg_fieldstat, sizeof(message_fieldstat_t), 0);
         }

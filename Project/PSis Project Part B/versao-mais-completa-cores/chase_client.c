@@ -10,6 +10,7 @@ void* rcv_thread(void* arg) {
     int nbytes, flag_1msg, aux_elements;
     message_t in_msg, out_msg;
     message_fieldstat_t in_msg_fd;
+    position_t updt_health;
 
     while(1){
         nbytes = recv(sock_fd, &in_msg, sizeof(in_msg), 0);
@@ -22,6 +23,10 @@ void* rcv_thread(void* arg) {
             aux_health0 = 1;
             mvwprintw(error_win, 1,1,"Your health reached 0. Press 'y' to continue playing.\n");
             wrefresh(error_win);
+            
+            updt_health.c = in_msg.c;
+            updt_health.health = in_msg.health;
+            draw_health(&updt_health, 0);
             alarm(TIME_OUT);
             
             while(1){

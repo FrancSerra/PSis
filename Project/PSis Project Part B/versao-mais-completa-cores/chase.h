@@ -21,7 +21,7 @@
 
 //The port number should be between 4000 and 40000, and needs to be converted with the htons function.
 #define SOCK_PORT 5000
-#define WINDOW_SIZE 5
+#define WINDOW_SIZE 20
 #define MSG_BOX_HEIGHT 18
 #define INITIAL_HEALTH 10
 #define UNUSED_CHAR 35 // # in ASCII
