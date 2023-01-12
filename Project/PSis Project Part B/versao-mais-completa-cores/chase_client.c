@@ -1,8 +1,13 @@
 #include "chase.h"
 
+static pthread_mutex_t mtx_health0 = PTHREAD_MUTEX_INITIALIZER; // mutex to access aux_health0
+
+pthread_cond_t condvar_health0 = PTHREAD_COND_INITIALIZER;
+
 // Global variables
 int aux_health0; // 1 if health reached zero
 WINDOW *my_win;
+
 
 void* rcv_thread(void* arg) {
 
@@ -20,25 +25,30 @@ void* rcv_thread(void* arg) {
 
         switch (in_msg.type) {
         case health0:
+
+            pthread_mutex_lock(&mtx_health0);
             aux_health0 = 1;
             mvwprintw(error_win, 1,1,"Your health reached 0. Press 'y' to continue playing.\n");
             wrefresh(error_win);
-            
+
             updt_health.c = in_msg.c;
             updt_health.health = in_msg.health;
             draw_health(&updt_health, 0);
             alarm(TIME_OUT);
             
-            while(1){
-                if(aux_health0 == 0){
-                    alarm(0); //Cancel previous alarm
+            while(aux_health0 != 0){ 
+                pthread_cond_wait(&condvar_health0, &mtx_health0);
+            } 
 
-                    // Sends a continue_game message
-                    out_msg = msg2send(continue_game, UNUSED_CHAR, -1, -1, -1, -1);
-                    send(client_sock, &out_msg, sizeof(message_t), 0); 
-                    break;
-                }
-            }       
+            pthread_mutex_unlock(&mtx_health0);     
+
+            alarm(0); //Cancel previous alarm
+
+            // Sends a continue_game message
+            out_msg = msg2send(continue_game, UNUSED_CHAR, -1, -1, -1, -1);
+            send(client_sock, &out_msg, sizeof(message_t), 0);
+            
+
             break;
         
         case field_stat:
@@ -111,6 +121,7 @@ int main(int argc, char *argv[]){
         exit(1);
     }
 
+
     // Create the socket 
     client_sock = socket(AF_INET, SOCK_STREAM, 0);
     if(client_sock == -1){
@@ -129,9 +140,18 @@ int main(int argc, char *argv[]){
     pthread_t thread_id;
     aux_health0 = 0;
 
+    struct sigaction sigIntHandler; 
+    
+    sigIntHandler.sa_handler = interupt_handler_client;    //interrupt handler for CTRL+C
+    sigemptyset(&sigIntHandler.sa_mask);
+    sigIntHandler.sa_flags = 0;
+
+    sigaction(SIGINT, &sigIntHandler, NULL);
+
     // If the provided address is invalid, exit.
     if(inet_aton(argv[1], &server_address.sin_addr) < 1){
         printf("Error: Not a valid IP address: \n");
+        close(client_sock);
         exit(-1);
     }
 
@@ -191,11 +211,14 @@ int main(int argc, char *argv[]){
 
         key = wgetch(my_win);
 
+        pthread_mutex_lock(&mtx_health0);
         if (aux_health0 == 1 && (key == 'Y' || key == 'y')){
             aux_health0 = 0;
-            mvwprintw(error_win, 1,1,"                                                           ");
+            mvwprintw(error_win, 1,1,"\n\n\n\n");
             wrefresh(error_win);
+            pthread_cond_signal(&condvar_health0);
         }
+        pthread_mutex_unlock(&mtx_health0);
 
 
         if ((key == KEY_LEFT || key == KEY_RIGHT || key == KEY_UP || key == KEY_DOWN) && aux_health0 == 0){
@@ -205,7 +228,10 @@ int main(int argc, char *argv[]){
         }
 
     } 
-    mvwprintw(error_win, 0,1,"\n");
+    mvwprintw(error_win, 0,1,"\n\n\n\n");
     wrefresh(error_win);   
+
+
     close(client_sock);
+    exit(-1);
 }

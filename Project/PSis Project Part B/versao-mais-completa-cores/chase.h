@@ -83,13 +83,13 @@ WINDOW * message_win;          // message window
 WINDOW * error_win;
 position_t player;             // information of player 
 int client_sock;
-position_t* field;
-int char_client;
+int char_client; 
 
 // Functions for lists and updates -- comments in file chase.c
 client_list* create_head_client_list();
 int insert_new_client(client_list* head, char c, int x, int y, int health, int socket_id);
 int delete_client(client_list* head, int socket_id, WINDOW* win);
+void delete_all_list(client_list* head);
 client_list* search_position(client_list* head, int x, int y);
 int search_letter(client_list* head, char c);
 client_list* search_client(client_list* head, int socket_id);
@@ -116,5 +116,6 @@ void move_client (client_list* client, WINDOW* win, int x, int y);
 
 // Handler functions
 void sig_handler(int signum);
+void interupt_handler_client(int s);
 
 #endif

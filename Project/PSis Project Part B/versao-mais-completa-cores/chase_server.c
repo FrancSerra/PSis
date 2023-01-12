@@ -8,6 +8,19 @@ int server_sock;
 extern pthread_mutex_t* ptr_mtx;
 extern pthread_rwlock_t* ptr_rwlock_list;
 
+void interupt_handler_server(int s){
+    mvwprintw(error_win, 1,1,"Caught Ctrl C!\n\n\n");
+    wrefresh(error_win);
+
+    pthread_rwlock_wrlock(ptr_rwlock_list);
+    delete_all_list(head);
+    pthread_rwlock_unlock(ptr_rwlock_list);
+
+    close(server_sock);
+
+    exit(-1); 
+}
+
 void* bots_thread(void* arg) {
     srand(time(NULL));
     int num_bots;
@@ -143,6 +156,9 @@ void* client_thread(void* arg){
             break;
         }
 
+        mvwprintw(error_win, 1,1,"\n\n\n\n");
+        wrefresh(error_win);
+
         if(in_msg.type == continue_game) {
 
             pthread_rwlock_rdlock(ptr_rwlock_list);
@@ -197,7 +213,7 @@ void* client_thread(void* arg){
 
     }
     else{
-        mvwprintw(error_win, 1,1,"                             \n");
+        mvwprintw(error_win, 1,1,"\n\n\n\n");
         wrefresh(error_win);
         //decreases number of players
         pthread_mutex_lock(ptr_mtx);
@@ -255,6 +271,15 @@ int main(int argc, char *argv[])
     my_win = generate_window();
     char_client = 0;
 
+    // Interrupt handler for CTRL+C
+    struct sigaction sigIntHandler; 
+    
+    sigIntHandler.sa_handler = interupt_handler_server;
+    sigemptyset(&sigIntHandler.sa_mask);
+    sigIntHandler.sa_flags = 0;
+
+    sigaction(SIGINT, &sigIntHandler, NULL);
+
 
     // Create bots and prizes threads
     pthread_create(&thread_id_prizes, NULL, prizes_thread, NULL);
@@ -268,7 +293,7 @@ int main(int argc, char *argv[])
             wrefresh(error_win);
         }
         else {
-            mvwprintw(error_win, 1,1,"                                            \n");
+            mvwprintw(error_win, 1,1,"\n\n\n\n");
             wrefresh(error_win);
             nbytes = recv(sock_fd, &in_msg, sizeof(in_msg), 0);
             if(nbytes == sizeof(message_t) && in_msg.type == conn){

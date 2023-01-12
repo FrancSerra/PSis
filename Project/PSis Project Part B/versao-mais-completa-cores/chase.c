@@ -3,12 +3,10 @@
 // Create mutex and rwlocks
 static pthread_rwlock_t rwlock_list = PTHREAD_RWLOCK_INITIALIZER; // rwlock to access the list
 static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER; // mutex to access num_elements and num_prizes
-pthread_mutex_t mtx_draw = PTHREAD_MUTEX_INITIALIZER; // mutex to access draw_player and draw_health
+static pthread_mutex_t mtx_draw = PTHREAD_MUTEX_INITIALIZER; // mutex to access draw_player and draw_health
 
 pthread_rwlock_t* ptr_rwlock_list = &rwlock_list;
 pthread_mutex_t* ptr_mtx = &mtx;
-
-
 
 // Functions for lists and updates
 
@@ -117,6 +115,21 @@ int delete_client(client_list* head, int socket_id, WINDOW* win){
 
     free(temp); // Free memory
     return 1;   //returns 1 if key was present and deleted
+}
+
+void delete_all_list(client_list* head) {
+    client_list *current, *next;
+
+    current = head->next;
+
+    while (current != NULL){
+        next = current->next;
+        if (current->socket_id != -1)
+            close(current->socket_id);
+        free(current);
+        current = next;
+    }
+    free(head);
 }
 
 client_list* search_position(client_list* head, int x, int y){
@@ -934,9 +947,15 @@ void move_client (client_list* client, WINDOW* win, int x, int y){
 // Handler functions
 
 void sig_handler(int signum){
-  mvwprintw(error_win, 1,1,"Key not pressed.\n Game over!\n");
-  wrefresh(error_win);
-  free(field);
-  close(client_sock);
-  exit(-1);
+    mvwprintw(error_win, 1,1,"Key not pressed.\n Game over!\n");
+    wrefresh(error_win);
+    close(client_sock);
+    exit(-1);
+}
+
+void interupt_handler_client(int s){
+    mvwprintw(error_win, 1,1,"Caught Ctrl C!\n\n\n");
+    wrefresh(error_win);
+    close(client_sock);
+    exit(-1); 
 }
